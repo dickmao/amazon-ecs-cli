@@ -14,7 +14,7 @@
 package cloudformation
 
 func GetTemplate() string {
-        return template
+	return template
 }
 
 // TODO: Improvements:
@@ -22,6 +22,16 @@ func GetTemplate() string {
 // 2. Auto detect existing key pairs
 // 3. Create key pair when none exist
 // 4. Remove the hardcoded 2 subnets creation
+
+// These are used to display CFN resources in the CreateCluster callback.
+// TODO: Find better way to use constants in template string itself.
+const (
+	Subnet1LogicalResourceId       = "PubSubnetAz1"
+	Subnet2LogicalResourceId       = "PubSubnetAz2"
+	VPCLogicalResourceId           = "Vpc"
+	SecurityGroupLogicalResourceId = "EcsSecurityGroup"
+)
+
 var template = `
 {
   "AWSTemplateFormatVersion": "2010-09-09",
@@ -61,6 +71,18 @@ var template = `
         "m4.4xlarge",
         "m4.10xlarge",
         "m4.16xlarge",
+        "m5.large",
+        "m5.xlarge",
+        "m5.2xlarge",
+        "m5.4xlarge",
+        "m5.12xlarge",
+        "m5.24xlarge",
+        "c5.large",
+        "c5.xlarge",
+        "c5.2xlarge",
+        "c5.4xlarge",
+        "c5.9xlarge",
+        "c5.18xlarge",
         "c4.large",
         "c4.xlarge",
         "c4.2xlarge",
@@ -84,11 +106,20 @@ var template = `
         "r4.16xlarge",
         "x1.16xlarge",
         "x1.32xlarge",
+        "x1e.xlarge",
+        "x1e.2xlarge",
+        "x1e.4xlarge",
+        "x1e.8xlarge",
+        "x1e.16xlarge",
         "x1e.32xlarge",
         "d2.xlarge",
         "d2.2xlarge",
         "d2.4xlarge",
         "d2.8xlarge",
+        "h1.2xlarge",
+        "h1.4xlarge",
+        "h1.8xlarge",
+        "h1.16xlarge",
         "i2.xlarge",
         "i2.2xlarge",
         "i2.4xlarge",
@@ -108,7 +139,10 @@ var template = `
         "g3.16xlarge",
         "p2.xlarge",
         "p2.8xlarge",
-        "p2.16xlarge"
+        "p2.16xlarge",
+        "p3.2xlarge",
+        "p3.8xlarge",
+        "p3.16xlarge"
       ],
       "ConstraintDescription": "must be a valid EC2 instance type."
     },
@@ -168,11 +202,19 @@ var template = `
       "Type" : "String",
       "Description" : "Optional - Instance IAM Role.",
       "Default" : ""
+    },
+    "IsFargate": {
+      "Type": "String",
+      "Description": "Optional - Whether to create resources only for running Fargate tasks.",
+      "Default": "false"
     }
   },
   "Conditions": {
     "IsCNRegion": {
       "Fn::Equals": [ { "Ref": "AWS::Region" }, "cn-north-1" ]
+    },
+    "LaunchInstances": {
+      "Fn::Equals": [ { "Ref": "IsFargate" }, "false" ]
     },
     "CreateVpcResources": {
       "Fn::Equals": [
@@ -183,26 +225,40 @@ var template = `
       ]
     },
     "CreateSecurityGroup": {
-      "Fn::Equals": [
+      "Fn::And":[
         {
-          "Fn::Join": [
-            "",
-            {
-              "Ref": "SecurityGroupIds"
-            }
-          ]
+          "Condition": "LaunchInstances"
         },
-        ""
-        ]
-    },
-    "CreateEC2LCWithKeyPair": {
-      "Fn::Not": [
         {
           "Fn::Equals": [
             {
-              "Ref": "KeyName"
+              "Fn::Join": [
+                "",
+                {
+                  "Ref": "SecurityGroupIds"
+                }
+              ]
             },
             ""
+          ]
+        }
+      ]
+    },
+    "CreateEC2LCWithKeyPair": {
+      "Fn::And":[
+        {
+          "Condition": "LaunchInstances"
+        },
+        {
+          "Fn::Not": [
+            {
+              "Fn::Equals": [
+                {
+                  "Ref": "KeyName"
+                },
+                ""
+              ]
+            }
           ]
         }
       ]
@@ -225,11 +281,18 @@ var template = `
       ]
     },
     "CreateEcsInstanceRole": {
-      "Fn::Equals": [
+      "Fn::And":[
         {
-          "Ref": "InstanceRole"
+          "Condition": "LaunchInstances"
         },
-        ""
+        {
+          "Fn::Equals": [
+            {
+              "Ref": "InstanceRole"
+            },
+            ""
+          ]
+        }
       ]
     }
   },
@@ -431,6 +494,7 @@ var template = `
       }
     },
     "EcsInstanceProfile": {
+      "Condition": "LaunchInstances",
       "Type": "AWS::IAM::InstanceProfile",
       "Properties": {
         "Path": "/",
@@ -448,6 +512,7 @@ var template = `
       }
     },
     "EcsInstanceLc": {
+      "Condition": "LaunchInstances",
       "Type": "AWS::AutoScaling::LaunchConfiguration",
       "Properties": {
         "ImageId": { "Ref" : "EcsAmiId" },
@@ -500,6 +565,7 @@ var template = `
       }
     },
     "EcsInstanceAsg": {
+      "Condition": "LaunchInstances",
       "Type": "AWS::AutoScaling::AutoScalingGroup",
       "Properties": {
         "VPCZoneIdentifier": {

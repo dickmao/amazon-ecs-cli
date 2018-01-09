@@ -1573,6 +1573,44 @@ func (_mr *_MockCloudFormationAPIRecorder) UpdateStack(arg0 interface{}) *gomock
 	return _mr.mock.ctrl.RecordCall(_mr.mock, "UpdateStack", arg0)
 }
 
+func (_m *MockCloudFormationAPI) UpdateStackInstances(_param0 *cloudformation.UpdateStackInstancesInput) (*cloudformation.UpdateStackInstancesOutput, error) {
+	ret := _m.ctrl.Call(_m, "UpdateStackInstances", _param0)
+	ret0, _ := ret[0].(*cloudformation.UpdateStackInstancesOutput)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+func (_mr *_MockCloudFormationAPIRecorder) UpdateStackInstances(arg0 interface{}) *gomock.Call {
+	return _mr.mock.ctrl.RecordCall(_mr.mock, "UpdateStackInstances", arg0)
+}
+
+func (_m *MockCloudFormationAPI) UpdateStackInstancesRequest(_param0 *cloudformation.UpdateStackInstancesInput) (*request.Request, *cloudformation.UpdateStackInstancesOutput) {
+	ret := _m.ctrl.Call(_m, "UpdateStackInstancesRequest", _param0)
+	ret0, _ := ret[0].(*request.Request)
+	ret1, _ := ret[1].(*cloudformation.UpdateStackInstancesOutput)
+	return ret0, ret1
+}
+
+func (_mr *_MockCloudFormationAPIRecorder) UpdateStackInstancesRequest(arg0 interface{}) *gomock.Call {
+	return _mr.mock.ctrl.RecordCall(_mr.mock, "UpdateStackInstancesRequest", arg0)
+}
+
+func (_m *MockCloudFormationAPI) UpdateStackInstancesWithContext(_param0 aws.Context, _param1 *cloudformation.UpdateStackInstancesInput, _param2 ...request.Option) (*cloudformation.UpdateStackInstancesOutput, error) {
+	_s := []interface{}{_param0, _param1}
+	for _, _x := range _param2 {
+		_s = append(_s, _x)
+	}
+	ret := _m.ctrl.Call(_m, "UpdateStackInstancesWithContext", _s...)
+	ret0, _ := ret[0].(*cloudformation.UpdateStackInstancesOutput)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+func (_mr *_MockCloudFormationAPIRecorder) UpdateStackInstancesWithContext(arg0, arg1 interface{}, arg2 ...interface{}) *gomock.Call {
+	_s := append([]interface{}{arg0, arg1}, arg2...)
+	return _mr.mock.ctrl.RecordCall(_mr.mock, "UpdateStackInstancesWithContext", _s...)
+}
+
 func (_m *MockCloudFormationAPI) UpdateStackRequest(_param0 *cloudformation.UpdateStackInput) (*request.Request, *cloudformation.UpdateStackOutput) {
 	ret := _m.ctrl.Call(_m, "UpdateStackRequest", _param0)
 	ret0, _ := ret[0].(*request.Request)
@@ -1636,6 +1674,44 @@ func (_m *MockCloudFormationAPI) UpdateStackWithContext(_param0 aws.Context, _pa
 func (_mr *_MockCloudFormationAPIRecorder) UpdateStackWithContext(arg0, arg1 interface{}, arg2 ...interface{}) *gomock.Call {
 	_s := append([]interface{}{arg0, arg1}, arg2...)
 	return _mr.mock.ctrl.RecordCall(_mr.mock, "UpdateStackWithContext", _s...)
+}
+
+func (_m *MockCloudFormationAPI) UpdateTerminationProtection(_param0 *cloudformation.UpdateTerminationProtectionInput) (*cloudformation.UpdateTerminationProtectionOutput, error) {
+	ret := _m.ctrl.Call(_m, "UpdateTerminationProtection", _param0)
+	ret0, _ := ret[0].(*cloudformation.UpdateTerminationProtectionOutput)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+func (_mr *_MockCloudFormationAPIRecorder) UpdateTerminationProtection(arg0 interface{}) *gomock.Call {
+	return _mr.mock.ctrl.RecordCall(_mr.mock, "UpdateTerminationProtection", arg0)
+}
+
+func (_m *MockCloudFormationAPI) UpdateTerminationProtectionRequest(_param0 *cloudformation.UpdateTerminationProtectionInput) (*request.Request, *cloudformation.UpdateTerminationProtectionOutput) {
+	ret := _m.ctrl.Call(_m, "UpdateTerminationProtectionRequest", _param0)
+	ret0, _ := ret[0].(*request.Request)
+	ret1, _ := ret[1].(*cloudformation.UpdateTerminationProtectionOutput)
+	return ret0, ret1
+}
+
+func (_mr *_MockCloudFormationAPIRecorder) UpdateTerminationProtectionRequest(arg0 interface{}) *gomock.Call {
+	return _mr.mock.ctrl.RecordCall(_mr.mock, "UpdateTerminationProtectionRequest", arg0)
+}
+
+func (_m *MockCloudFormationAPI) UpdateTerminationProtectionWithContext(_param0 aws.Context, _param1 *cloudformation.UpdateTerminationProtectionInput, _param2 ...request.Option) (*cloudformation.UpdateTerminationProtectionOutput, error) {
+	_s := []interface{}{_param0, _param1}
+	for _, _x := range _param2 {
+		_s = append(_s, _x)
+	}
+	ret := _m.ctrl.Call(_m, "UpdateTerminationProtectionWithContext", _s...)
+	ret0, _ := ret[0].(*cloudformation.UpdateTerminationProtectionOutput)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+func (_mr *_MockCloudFormationAPIRecorder) UpdateTerminationProtectionWithContext(arg0, arg1 interface{}, arg2 ...interface{}) *gomock.Call {
+	_s := append([]interface{}{arg0, arg1}, arg2...)
+	return _mr.mock.ctrl.RecordCall(_mr.mock, "UpdateTerminationProtectionWithContext", _s...)
 }
 
 func (_m *MockCloudFormationAPI) ValidateTemplate(_param0 *cloudformation.ValidateTemplateInput) (*cloudformation.ValidateTemplateOutput, error) {

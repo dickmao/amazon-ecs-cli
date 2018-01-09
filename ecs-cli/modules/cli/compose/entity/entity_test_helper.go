@@ -33,6 +33,7 @@ import (
 type validateListTasksInput func(*ecs.ListTasksInput, string, *testing.T)
 type setupEntityForTestInfo func(*context.Context) ProjectEntity
 
+// TestInfo tests ps commands
 func TestInfo(setupEntity setupEntityForTestInfo, validateFunc validateListTasksInput, t *testing.T, filterLocal bool) {
 	projectName := "project"
 	containerInstance := "containerInstance"
@@ -105,7 +106,7 @@ func TestInfo(setupEntity setupEntityForTestInfo, validateFunc validateListTasks
 	context := &context.Context{
 		ECSClient: mockEcs,
 		EC2Client: mockEc2,
-		ECSParams: &config.CLIParams{},
+		CLIParams: &config.CLIParams{},
 		Context: project.Context{
 			ProjectName: projectName,
 		},

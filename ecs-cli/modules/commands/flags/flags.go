@@ -11,7 +11,7 @@
 // express or implied. See the License for the specific language governing
 // permissions and limitations under the License.
 
-package command
+package flags
 
 import (
 	"fmt"
@@ -44,12 +44,26 @@ const (
 	AWSAccessKeyEnvVar      = "AWS_ACCESS_KEY_ID"
 	AWSSecretKeyEnvVar      = "AWS_SECRET_ACCESS_KEY"
 
+	// logs
+	TaskIDFlag         = "task-id"
+	TaskDefinitionFlag = "task-def"
+	FollowLogsFlag     = "follow"
+	FilterPatternFlag  = "filter-pattern"
+	SinceFlag          = "since"
+	StartTimeFlag      = "start-time"
+	EndTimeFlag        = "end-time"
+	TimeStampsFlag     = "timestamps"
+	CreateLogsFlag     = "create-log-groups"
+
 	ComposeProjectNamePrefixFlag         = "compose-project-name-prefix"
 	ComposeProjectNamePrefixDefaultValue = "ecscompose-"
 	ComposeServiceNamePrefixFlag         = "compose-service-name-prefix"
 	ComposeServiceNamePrefixDefaultValue = ComposeProjectNamePrefixDefaultValue + "service-"
 	CFNStackNameFlag                     = "cfn-stack-name"
 	CFNStackNamePrefixDefaultValue       = "amazon-ecs-cli-setup-"
+
+	LaunchTypeFlag        = "launch-type"
+	DefaultLaunchTypeFlag = "default-launch-type"
 
 	// Cluster
 	AsgMaxSizeFlag                  = "size"
@@ -117,14 +131,14 @@ func OptionalRegionAndProfileFlags() []cli.Flag {
 			Name:   ECSProfileFlag,
 			EnvVar: ECSProfileEnvVar,
 			Usage: fmt.Sprintf(
-				"[Optional] Specifies the name of the ECS profle configuration to use. Defaults to the default profile configuration.",
+				"[Optional] Specifies the name of the ECS profile configuration to use. Defaults to the default profile configuration.",
 			),
 		},
 		cli.StringFlag{
 			Name:   AWSProfileFlag,
 			EnvVar: AWSProfileEnvVar,
 			Usage: fmt.Sprintf(
-				"[Optional]  Use the AWS credentials from an existing named profile in ~/.aws/credentials.",
+				"[Optional] Use the AWS credentials from an existing named profile in ~/.aws/credentials.",
 			),
 		},
 	}
@@ -143,6 +157,26 @@ func OptionalClusterFlag() cli.Flag {
 // OptionalConfigFlags returns the concatenation of OptionalRegionAndProfileFlags and OptionalClusterFlag
 func OptionalConfigFlags() []cli.Flag {
 	return append(OptionalRegionAndProfileFlags(), OptionalClusterFlag())
+}
+
+// OptionalLaunchTypeFlag allows users to specify the launch type for their task/service/cluster
+func OptionalLaunchTypeFlag() cli.Flag {
+	return cli.StringFlag{
+		Name: LaunchTypeFlag,
+		Usage: fmt.Sprintf(
+			"[Optional] Specifies the launch type. Options: EC2 or FARGATE. Overrides the default launch type stored in your cluster configuration. Defaults to EC2 if a cluster configuration is not used.",
+		),
+	}
+}
+
+// OptionalCreateLogsFlag allows users to specify the launch type for their task/service/cluster
+func OptionalCreateLogsFlag() cli.Flag {
+	return cli.BoolFlag{
+		Name: CreateLogsFlag,
+		Usage: fmt.Sprintf(
+			"[Optional] Create the CloudWatch log groups specified in your compose file(s).",
+		),
+	}
 }
 
 // UsageErrorFactory Returns a usage error function for the specified command

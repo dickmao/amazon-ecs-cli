@@ -83,6 +83,10 @@ func (t *Task) TaskDefinitionCache() cache.Cache {
 // and persists it in a cache locally. It always checks the cache before creating
 func (t *Task) Create() error {
 	_, err := entity.GetOrCreateTaskDefinition(t)
+	if err != nil {
+		return err
+	}
+	err = entity.OptionallyCreateLogs(t)
 	return err
 }
 
@@ -237,14 +241,26 @@ func (t *Task) stopTasks(ecsTasks []*ecs.Task) error {
 
 // runTasks issues run task request to ECS Service in chunks of count=10
 func (t *Task) runTasks(taskDefinitionId string, totalCount int) ([]*ecs.Task, error) {
+	networkConfig, err := composeutils.ConvertToECSNetworkConfiguration(t.projectContext.ECSParams)
+	if err != nil {
+		return nil, err
+	}
+
 	result := []*ecs.Task{}
 	chunkSize := 10 // can issue only upto 10 tasks in a RunTask Call
+	launchType := t.Context().CLIParams.LaunchType
+
+	if err := entity.ValidateFargateParams(t.Context().ECSParams, launchType); err != nil {
+		return nil, err
+	}
+
 	for i := 0; i < totalCount; i += chunkSize {
 		count := chunkSize
 		if i+chunkSize > totalCount {
 			count = totalCount - i
 		}
-		ecsTasks, err := t.Context().ECSClient.RunTask(taskDefinitionId, entity.GetTaskGroup(t), count)
+
+		ecsTasks, err := t.Context().ECSClient.RunTask(taskDefinitionId, entity.GetTaskGroup(t), count, networkConfig, launchType)
 		if err != nil {
 			return nil, err
 		}
@@ -255,6 +271,7 @@ func (t *Task) runTasks(taskDefinitionId string, totalCount int) ([]*ecs.Task, e
 		}
 		result = append(result, ecsTasks.Tasks...)
 	}
+
 	return result, nil
 }
 
@@ -275,8 +292,12 @@ func (t *Task) up(updateTasks bool) error {
 	if err != nil {
 		return err
 	}
-
 	_, err = entity.GetOrCreateTaskDefinition(t)
+	if err != nil {
+		return err
+	}
+
+	err = entity.OptionallyCreateLogs(t)
 	if err != nil {
 		return err
 	}

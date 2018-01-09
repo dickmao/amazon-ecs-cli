@@ -22,7 +22,7 @@ import (
 	"github.com/aws/amazon-ecs-cli/ecs-cli/modules/cli/compose/context"
 	"github.com/aws/amazon-ecs-cli/ecs-cli/modules/cli/compose/entity"
 	"github.com/aws/amazon-ecs-cli/ecs-cli/modules/cli/compose/entity/types"
-	"github.com/aws/amazon-ecs-cli/ecs-cli/modules/commands"
+	"github.com/aws/amazon-ecs-cli/ecs-cli/modules/commands/flags"
 	"github.com/aws/amazon-ecs-cli/ecs-cli/modules/utils"
 	"github.com/aws/amazon-ecs-cli/ecs-cli/modules/utils/cache"
 	composeutils "github.com/aws/amazon-ecs-cli/ecs-cli/modules/utils/compose"
@@ -58,13 +58,13 @@ func NewService(context *context.Context) entity.ProjectEntity {
 	}
 }
 
-// LoadContext reads the context set in NewService and loads DeploymentConfiguration and LoadBalnacer
+// LoadContext reads the context set in NewService and loads DeploymentConfiguration and LoadBalancer
 func (s *Service) LoadContext() error {
-	maxPercent, err := getInt64FromCLIContext(s.Context(), command.DeploymentMaxPercentFlag)
+	maxPercent, err := getInt64FromCLIContext(s.Context(), flags.DeploymentMaxPercentFlag)
 	if err != nil {
 		return err
 	}
-	minHealthyPercent, err := getInt64FromCLIContext(s.Context(), command.DeploymentMinHealthyPercentFlag)
+	minHealthyPercent, err := getInt64FromCLIContext(s.Context(), flags.DeploymentMinHealthyPercentFlag)
 	if err != nil {
 		return err
 	}
@@ -74,11 +74,11 @@ func (s *Service) LoadContext() error {
 	}
 
 	// Load Balancer
-	role := s.Context().CLIContext.String(command.RoleFlag)
-	targetGroupArn := s.Context().CLIContext.String(command.TargetGroupArnFlag)
-	loadBalancerName := s.Context().CLIContext.String(command.LoadBalancerNameFlag)
-	containerName := s.Context().CLIContext.String(command.ContainerNameFlag)
-	containerPort, err := getInt64FromCLIContext(s.Context(), command.ContainerPortFlag)
+	role := s.Context().CLIContext.String(flags.RoleFlag)
+	targetGroupArn := s.Context().CLIContext.String(flags.TargetGroupArnFlag)
+	loadBalancerName := s.Context().CLIContext.String(flags.LoadBalancerNameFlag)
+	containerName := s.Context().CLIContext.String(flags.ContainerNameFlag)
+	containerPort, err := getInt64FromCLIContext(s.Context(), flags.ContainerPortFlag)
 	if err != nil {
 		return err
 	}
@@ -87,7 +87,7 @@ func (s *Service) LoadContext() error {
 	// The rest will be taken care off by the API call
 	if role != "" || targetGroupArn != "" || loadBalancerName != "" || containerName != "" || containerPort != nil {
 		if targetGroupArn != "" && loadBalancerName != "" {
-			return errors.Errorf("[--%s] and [--%s] flags cannot both be specified", command.LoadBalancerNameFlag, command.TargetGroupArnFlag)
+			return errors.Errorf("[--%s] and [--%s] flags cannot both be specified", flags.LoadBalancerNameFlag, flags.TargetGroupArnFlag)
 		}
 
 		s.loadBalancer = &ecs.LoadBalancer{
@@ -160,6 +160,10 @@ func (s *Service) Create() error {
 	if err != nil {
 		return err
 	}
+	err = entity.OptionallyCreateLogs(s)
+	if err != nil {
+		return err
+	}
 	return s.createService()
 }
 
@@ -175,8 +179,12 @@ func (s *Service) Start() error {
 		// Read the custom error returned from describeService to see if the resource was missing
 		if strings.Contains(err.Error(), ecsMissingResourceCode) {
 			return fmt.Errorf("Please use '%s' command to create the service '%s' first",
-				command.CreateServiceCommandName, entity.GetServiceName(s))
+				flags.CreateServiceCommandName, entity.GetServiceName(s))
 		}
+		return err
+	}
+	err = entity.OptionallyCreateLogs(s)
+	if err != nil {
 		return err
 	}
 	return s.startService(ecsService)
@@ -201,6 +209,11 @@ func (s *Service) Up() error {
 	// get the current snapshot of compose yml
 	// and update this instance with the latest task definition
 	newTaskDefinition, err := entity.GetOrCreateTaskDefinition(s)
+	if err != nil {
+		return err
+	}
+
+	err = entity.OptionallyCreateLogs(s)
 	if err != nil {
 		return err
 	}
@@ -239,7 +252,13 @@ func (s *Service) Up() error {
 	deploymentConfig := s.DeploymentConfig()
 	// if the task definitions were different, updateService with new task definition
 	// this creates a deployment in ECS and slowly takes down the containers with old ones and starts new ones
-	err = s.Context().ECSClient.UpdateService(ecsServiceName, newTaskDefinitionId, newCount, deploymentConfig)
+
+	networkConfig, err := composeutils.ConvertToECSNetworkConfiguration(s.projectContext.ECSParams)
+	if err != nil {
+		return err
+	}
+
+	err = s.Context().ECSClient.UpdateService(ecsServiceName, newTaskDefinitionId, newCount, deploymentConfig, networkConfig)
 	if err != nil {
 		return err
 	}
@@ -327,8 +346,17 @@ func (s *Service) EntityType() types.Type {
 func (s *Service) createService() error {
 	serviceName := entity.GetServiceName(s)
 	taskDefinitionID := entity.GetIdFromArn(s.TaskDefinition().TaskDefinitionArn)
+	launchType := s.Context().CLIParams.LaunchType
 
-	err := s.Context().ECSClient.CreateService(serviceName, taskDefinitionID, s.loadBalancer, s.role, s.DeploymentConfig())
+	networkConfig, err := composeutils.ConvertToECSNetworkConfiguration(s.projectContext.ECSParams)
+	if err != nil {
+		return err
+	}
+	if err = entity.ValidateFargateParams(s.Context().ECSParams, launchType); err != nil {
+		return err
+	}
+
+	err = s.Context().ECSClient.CreateService(serviceName, taskDefinitionID, s.loadBalancer, s.role, s.DeploymentConfig(), networkConfig, launchType)
 	if err != nil {
 		return err
 	}
@@ -372,9 +400,16 @@ func (s *Service) startService(ecsService *ecs.Service) error {
 func (s *Service) updateService(count int64) error {
 	serviceName := entity.GetServiceName(s)
 	deploymentConfig := s.DeploymentConfig()
-	if err := s.Context().ECSClient.UpdateServiceCount(serviceName, count, deploymentConfig); err != nil {
+	networkConfig, err := composeutils.ConvertToECSNetworkConfiguration(s.projectContext.ECSParams)
+
+	if err != nil {
 		return err
 	}
+
+	if err = s.Context().ECSClient.UpdateServiceCount(serviceName, count, deploymentConfig, networkConfig); err != nil {
+		return err
+	}
+
 	fields := log.Fields{
 		"serviceName":  serviceName,
 		"desiredCount": count,

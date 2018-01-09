@@ -14,12 +14,20 @@
 package config
 
 import (
+	"fmt"
 	"os"
 
-	ecscli "github.com/aws/amazon-ecs-cli/ecs-cli/modules/commands"
+	"github.com/aws/amazon-ecs-cli/ecs-cli/modules/commands/flags"
 	"github.com/aws/aws-sdk-go/aws/session"
 	"github.com/pkg/errors"
 	"github.com/urfave/cli"
+)
+
+const (
+	// Launch types are case sensitive
+	LaunchTypeFargate = "FARGATE"
+	LaunchTypeEC2     = "EC2"
+	LaunchTypeDefault = "EC2"
 )
 
 // CLIParams saves config to create an aws service clients
@@ -29,6 +37,7 @@ type CLIParams struct {
 	ComposeServiceNamePrefix string
 	ComposeProjectNamePrefix string // Deprecated; remains for backwards compatibility
 	CFNStackName             string
+	LaunchType               string
 }
 
 // Searches as far up the context as necessary. This function works no matter
@@ -44,33 +53,42 @@ func recursiveFlagSearch(context *cli.Context, flag string) string {
 	}
 }
 
-// NewCLIParams creates a new ECSParams object from the config file.
+// NewCLIParams creates a new CLIParams object from the config file.
 func NewCLIParams(context *cli.Context, rdwr ReadWriter) (*CLIParams, error) {
-	clusterConfig := recursiveFlagSearch(context, ecscli.ClusterConfigFlag)
-	profileConfig := recursiveFlagSearch(context, ecscli.ECSProfileFlag)
+	clusterConfig := recursiveFlagSearch(context, flags.ClusterConfigFlag)
+	profileConfig := recursiveFlagSearch(context, flags.ECSProfileFlag)
 	ecsConfig, err := rdwr.Get(clusterConfig, profileConfig)
 
 	if err != nil {
 		return nil, errors.Wrap(err, "Error loading config")
 	}
 
+	// launch type from the flag overrides defaul launch type
+	if launchTypeFromFlag := recursiveFlagSearch(context, flags.LaunchTypeFlag); launchTypeFromFlag != "" {
+		ecsConfig.DefaultLaunchType = launchTypeFromFlag
+	}
+
+	if err = ValidateLaunchType(ecsConfig.DefaultLaunchType); err != nil {
+		return nil, err
+	}
+
 	// Order of cluster resolution
 	//  1) Inline flag
 	//  2) Environment Variable
 	//  3) ECS Config
-	if clusterFromEnv := os.Getenv(ecscli.ClusterEnvVar); clusterFromEnv != "" {
+	if clusterFromEnv := os.Getenv(flags.ClusterEnvVar); clusterFromEnv != "" {
 		ecsConfig.Cluster = clusterFromEnv
 	}
-	if clusterFromFlag := recursiveFlagSearch(context, ecscli.ClusterFlag); clusterFromFlag != "" {
+	if clusterFromFlag := recursiveFlagSearch(context, flags.ClusterFlag); clusterFromFlag != "" {
 		ecsConfig.Cluster = clusterFromFlag
 	}
 
 	//--region flag has the highest precedence to set ecs-cli region config.
-	if regionFromFlag := recursiveFlagSearch(context, ecscli.RegionFlag); regionFromFlag != "" {
+	if regionFromFlag := recursiveFlagSearch(context, flags.RegionFlag); regionFromFlag != "" {
 		ecsConfig.Region = regionFromFlag
 	}
 
-	if awsProfileFromFlag := recursiveFlagSearch(context, ecscli.AWSProfileFlag); awsProfileFromFlag != "" {
+	if awsProfileFromFlag := recursiveFlagSearch(context, flags.AWSProfileFlag); awsProfileFromFlag != "" {
 		ecsConfig.AWSProfile = awsProfileFromFlag
 		// unset Access Key and Secret Key, otherwise they will take precedence
 		ecsConfig.AWSAccessKey = ""
@@ -87,7 +105,7 @@ func NewCLIParams(context *cli.Context, rdwr ReadWriter) (*CLIParams, error) {
 	}
 
 	if ecsConfig.CFNStackName == "" {
-		ecsConfig.CFNStackName = ecscli.CFNStackNamePrefixDefaultValue + ecsConfig.Cluster
+		ecsConfig.CFNStackName = flags.CFNStackNamePrefixDefaultValue + ecsConfig.Cluster
 	}
 
 	return &CLIParams{
@@ -96,5 +114,14 @@ func NewCLIParams(context *cli.Context, rdwr ReadWriter) (*CLIParams, error) {
 		ComposeServiceNamePrefix: ecsConfig.ComposeServiceNamePrefix,
 		ComposeProjectNamePrefix: ecsConfig.ComposeProjectNamePrefix, // deprecated; remains for backwards compatibility
 		CFNStackName:             ecsConfig.CFNStackName,
+		LaunchType:               ecsConfig.DefaultLaunchType,
 	}, nil
+}
+
+// ValidateLaunchType checks that the launch type specified was an allowed value
+func ValidateLaunchType(launchType string) error {
+	if (launchType != "") && (launchType != LaunchTypeEC2) && (launchType != LaunchTypeFargate) {
+		return fmt.Errorf("Supported launch types are '%s' and '%s'; %s is not a valid launch type.", LaunchTypeEC2, LaunchTypeFargate, launchType)
+	}
+	return nil
 }

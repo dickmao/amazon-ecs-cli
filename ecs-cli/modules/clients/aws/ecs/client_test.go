@@ -100,7 +100,7 @@ func TestNewECSClientWithRegion(t *testing.T) {
 func TestRegisterTDWithCache(t *testing.T) {
 	defer os.Clearenv()
 
-	mockEcs, mockCache, client, ctrl := setupTestController(t, getDefaultCliConfigParams(t))
+	mockEcs, mockCache, client, ctrl := setupTestController(t, getDefaultCLIConfigParams(t))
 	defer ctrl.Finish()
 
 	registerTaskDefinitionInput1 := ecs.RegisterTaskDefinitionInput{
@@ -202,7 +202,7 @@ func TestRegisterTDWithCache(t *testing.T) {
 func TestRegisterTaskDefinitionIfNeededTDBecomesInactive(t *testing.T) {
 	defer os.Clearenv()
 
-	mockEcs, mockCache, client, ctrl := setupTestController(t, getDefaultCliConfigParams(t))
+	mockEcs, mockCache, client, ctrl := setupTestController(t, getDefaultCLIConfigParams(t))
 	defer ctrl.Finish()
 
 	registerTaskDefinitionInput1 := ecs.RegisterTaskDefinitionInput{
@@ -288,7 +288,7 @@ func TestRegisterTaskDefinitionIfNeededFamilyNameNotProvided(t *testing.T) {
 func TestRegisterTaskDefinitionIfNeededTDLatestTDRevisionIsInactive(t *testing.T) {
 	defer os.Clearenv()
 
-	mockEcs, mockCache, client, ctrl := setupTestController(t, getDefaultCliConfigParams(t))
+	mockEcs, mockCache, client, ctrl := setupTestController(t, getDefaultCLIConfigParams(t))
 	defer ctrl.Finish()
 
 	registerTaskDefinitionInput1 := ecs.RegisterTaskDefinitionInput{
@@ -336,7 +336,7 @@ func TestRegisterTaskDefinitionIfNeededTDLatestTDRevisionIsInactive(t *testing.T
 func TestRegisterTaskDefinitionIfNeededCachedTDIsInactive(t *testing.T) {
 	defer os.Clearenv()
 
-	mockEcs, mockCache, client, ctrl := setupTestController(t, getDefaultCliConfigParams(t))
+	mockEcs, mockCache, client, ctrl := setupTestController(t, getDefaultCLIConfigParams(t))
 	defer ctrl.Finish()
 
 	registerTaskDefinitionInput1 := ecs.RegisterTaskDefinitionInput{
@@ -391,7 +391,7 @@ func TestRegisterTaskDefinitionIfNeededCachedTDIsInactive(t *testing.T) {
 }
 
 func TestGetTasksPages(t *testing.T) {
-	mockEcs, _, client, ctrl := setupTestController(t, getDefaultCliConfigParams(t))
+	mockEcs, _, client, ctrl := setupTestController(t, getDefaultCLIConfigParams(t))
 	defer ctrl.Finish()
 
 	family := "taskDefinitionFamily"
@@ -432,7 +432,7 @@ func TestGetTasksPages(t *testing.T) {
 }
 
 func TestRunTask(t *testing.T) {
-	mockEcs, _, client, ctrl := setupTestController(t, getDefaultCliConfigParams(t))
+	mockEcs, _, client, ctrl := setupTestController(t, getDefaultCLIConfigParams(t))
 	defer ctrl.Finish()
 
 	td := "taskDef"
@@ -445,9 +445,97 @@ func TestRunTask(t *testing.T) {
 		assert.Equal(t, td, aws.StringValue(req.TaskDefinition), "Expected taskDefinition to match")
 		assert.Equal(t, group, aws.StringValue(req.Group), "Expected group to match")
 		assert.Equal(t, int64(count), aws.Int64Value(req.Count), "Expected count to match")
+		assert.Nil(t, req.NetworkConfiguration, "Expected Network Config to be nil.")
+		assert.Nil(t, req.LaunchType, "Expected Launch Type to be nil.")
 	}).Return(&ecs.RunTaskOutput{}, nil)
 
-	_, err := client.RunTask(td, group, count)
+	_, err := client.RunTask(td, group, count, nil, "")
+	assert.NoError(t, err, "Unexpected error when calling RunTask")
+}
+
+func TestRunTaskWithLaunchTypeEC2(t *testing.T) {
+	mockEcs, _, client, ctrl := setupTestController(t, getCLIConfigParamsWithLaunchType(t, "EC2"))
+	defer ctrl.Finish()
+
+	td := "taskDef"
+	group := "taskGroup"
+	count := 5
+
+	mockEcs.EXPECT().RunTask(gomock.Any()).Do(func(input interface{}) {
+		req := input.(*ecs.RunTaskInput)
+		assert.Equal(t, clusterName, aws.StringValue(req.Cluster), "Expected clusterName to match")
+		assert.Equal(t, td, aws.StringValue(req.TaskDefinition), "Expected taskDefinition to match")
+		assert.Equal(t, group, aws.StringValue(req.Group), "Expected group to match")
+		assert.Equal(t, int64(count), aws.Int64Value(req.Count), "Expected count to match")
+		assert.Equal(t, "EC2", aws.StringValue(req.LaunchType))
+		assert.Nil(t, req.NetworkConfiguration, "Expected Network Config to be nil.")
+	}).Return(&ecs.RunTaskOutput{}, nil)
+
+	_, err := client.RunTask(td, group, count, nil, "EC2")
+	assert.NoError(t, err, "Unexpected error when calling RunTask")
+}
+
+func TestRunTaskWithLaunchTypeFargate(t *testing.T) {
+	mockEcs, _, client, ctrl := setupTestController(t, getCLIConfigParamsWithLaunchType(t, "FARGATE"))
+	defer ctrl.Finish()
+
+	td := "taskDef"
+	group := "taskGroup"
+	count := 5
+
+	subnets := []*string{aws.String("subnet-feedface")}
+	securityGroups := []*string{aws.String("sg-c0ffeefe")}
+	awsVpcConfig := &ecs.AwsVpcConfiguration{
+		Subnets:        subnets,
+		SecurityGroups: securityGroups,
+		AssignPublicIp: aws.String("ENABLED"),
+	}
+	networkConfig := &ecs.NetworkConfiguration{
+		AwsvpcConfiguration: awsVpcConfig,
+	}
+
+	mockEcs.EXPECT().RunTask(gomock.Any()).Do(func(input interface{}) {
+		req := input.(*ecs.RunTaskInput)
+		assert.Equal(t, clusterName, aws.StringValue(req.Cluster), "Expected clusterName to match")
+		assert.Equal(t, td, aws.StringValue(req.TaskDefinition), "Expected taskDefinition to match")
+		assert.Equal(t, group, aws.StringValue(req.Group), "Expected group to match")
+		assert.Equal(t, int64(count), aws.Int64Value(req.Count), "Expected count to match")
+		assert.Equal(t, "FARGATE", aws.StringValue(req.LaunchType))
+		assert.NotNil(t, req.NetworkConfiguration, "Expected Network Config to not be nil.")
+	}).Return(&ecs.RunTaskOutput{}, nil)
+
+	_, err := client.RunTask(td, group, count, networkConfig, "FARGATE")
+	assert.NoError(t, err, "Unexpected error when calling RunTask")
+}
+
+func TestRunTask_WithTaskNetworking(t *testing.T) {
+	mockEcs, _, client, ctrl := setupTestController(t, getDefaultCLIConfigParams(t))
+	defer ctrl.Finish()
+
+	td := "taskDef"
+	group := "taskGroup"
+	count := 5
+
+	subnets := []*string{aws.String("subnet-feedface")}
+	securityGroups := []*string{aws.String("sg-c0ffeefe")}
+	awsVpcConfig := &ecs.AwsVpcConfiguration{
+		Subnets:        subnets,
+		SecurityGroups: securityGroups,
+	}
+	networkConfig := &ecs.NetworkConfiguration{
+		AwsvpcConfiguration: awsVpcConfig,
+	}
+
+	mockEcs.EXPECT().RunTask(gomock.Any()).Do(func(input interface{}) {
+		req := input.(*ecs.RunTaskInput)
+		assert.Equal(t, clusterName, aws.StringValue(req.Cluster), "Expected clusterName to match")
+		assert.Equal(t, td, aws.StringValue(req.TaskDefinition), "Expected taskDefinition to match")
+		assert.Equal(t, group, aws.StringValue(req.Group), "Expected group to match")
+		assert.Equal(t, int64(count), aws.Int64Value(req.Count), "Expected count to match")
+		assert.Equal(t, networkConfig, req.NetworkConfiguration, "Expected networkConfiguration to match")
+	}).Return(&ecs.RunTaskOutput{}, nil)
+
+	_, err := client.RunTask(td, group, count, networkConfig, "")
 	assert.NoError(t, err, "Unexpected error when calling RunTask")
 }
 
@@ -489,7 +577,7 @@ func TestIsActiveCluster(t *testing.T) {
 }
 
 func TestGetEC2InstanceIDs(t *testing.T) {
-	mockEcs, _, client, ctrl := setupTestController(t, getDefaultCliConfigParams(t))
+	mockEcs, _, client, ctrl := setupTestController(t, getDefaultCLIConfigParams(t))
 	defer ctrl.Finish()
 
 	containerInstanceArn := "containerInstanceArn"
@@ -526,7 +614,7 @@ func TestGetEC2InstanceIDsWithEmptyArns(t *testing.T) {
 }
 
 func TestGetEC2InstanceIDsWithNoEc2InstanceID(t *testing.T) {
-	mockEcs, _, client, ctrl := setupTestController(t, getDefaultCliConfigParams(t))
+	mockEcs, _, client, ctrl := setupTestController(t, getDefaultCLIConfigParams(t))
 	defer ctrl.Finish()
 
 	containerInstanceArn := "containerInstanceArn"
@@ -547,7 +635,7 @@ func TestGetEC2InstanceIDsWithNoEc2InstanceID(t *testing.T) {
 }
 
 func TestGetEC2InstanceIDsErrorCase(t *testing.T) {
-	mockEcs, _, client, ctrl := setupTestController(t, getDefaultCliConfigParams(t))
+	mockEcs, _, client, ctrl := setupTestController(t, getDefaultCLIConfigParams(t))
 	defer ctrl.Finish()
 
 	containerInstanceArn := "containerInstanceArn"
@@ -578,7 +666,7 @@ func setupTestController(t *testing.T, configParams *config.CLIParams) (*mock_ec
 	return mockEcs, mockCache, client, ctrl
 }
 
-func getDefaultCliConfigParams(t *testing.T) *config.CLIParams {
+func getDefaultCLIConfigParams(t *testing.T) *config.CLIParams {
 	setDefaultAWSEnvVariables()
 
 	testSession, err := session.NewSession()
@@ -587,6 +675,19 @@ func getDefaultCliConfigParams(t *testing.T) *config.CLIParams {
 	return &config.CLIParams{
 		Cluster: clusterName,
 		Session: testSession,
+	}
+}
+
+func getCLIConfigParamsWithLaunchType(t *testing.T, launchType string) *config.CLIParams {
+	setDefaultAWSEnvVariables()
+
+	testSession, err := session.NewSession()
+	assert.NoError(t, err, "Unexpected error in creating session")
+
+	return &config.CLIParams{
+		Cluster:    clusterName,
+		Session:    testSession,
+		LaunchType: launchType,
 	}
 }
 

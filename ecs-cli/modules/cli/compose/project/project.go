@@ -23,7 +23,7 @@ import (
 	"github.com/aws/amazon-ecs-cli/ecs-cli/modules/cli/compose/entity/service"
 	"github.com/aws/amazon-ecs-cli/ecs-cli/modules/cli/compose/entity/task"
 
-	"github.com/aws/amazon-ecs-cli/ecs-cli/modules/commands"
+	"github.com/aws/amazon-ecs-cli/ecs-cli/modules/commands/flags"
 	"github.com/aws/amazon-ecs-cli/ecs-cli/modules/utils/compose"
 	"github.com/docker/libcompose/config"
 	"github.com/docker/libcompose/project"
@@ -123,11 +123,17 @@ func (p *ecsProject) Parse() error {
 	if err := context.Open(); err != nil {
 		return err
 	}
+
 	if err := p.Entity().LoadContext(); err != nil {
 		return err
 	}
 
 	if err := p.parseCompose(); err != nil {
+		return err
+	}
+
+	// Populates ecs-params onto project context
+	if err := p.parseECSParams(); err != nil {
 		return err
 	}
 
@@ -149,6 +155,21 @@ func (p *ecsProject) parseCompose() error {
 	return p.context.SetProjectName()
 }
 
+// parseECSParams sets data from the ecs-params.yml file on the ecsProject.context
+func (p *ecsProject) parseECSParams() error {
+	logrus.Debug("Parsing the ecs-params yaml...")
+	ecsParamsFileName := p.context.CLIContext.GlobalString(flags.ECSParamsFileNameFlag)
+	ecsParams, err := utils.ReadECSParams(ecsParamsFileName)
+
+	if err != nil {
+		return err
+	}
+
+	p.context.ECSParams = ecsParams
+
+	return nil
+}
+
 // transformTaskDefinition converts the compose yml and ecs-params yml into an ECS task definition
 func (p *ecsProject) transformTaskDefinition() error {
 	context := p.context
@@ -156,13 +177,21 @@ func (p *ecsProject) transformTaskDefinition() error {
 	// convert to task definition
 	logrus.Debug("Transforming yaml to task definition...")
 	taskDefinitionName := utils.GetTaskDefinitionName("", context.Context.ProjectName)
-	taskRoleArn := context.CLIContext.GlobalString(command.TaskRoleArnFlag)
+	taskRoleArn := context.CLIContext.GlobalString(flags.TaskRoleArnFlag)
+	requiredCompatibilities := context.CLIParams.LaunchType
 	serviceconfigs, err := p.ServiceConfigs()
 	if err != nil {
 		return err
 	}
-	ecsParamsFileName := context.CLIContext.GlobalString(command.ECSParamsFileNameFlag)
-	taskDefinition, err := utils.ConvertToTaskDefinition(taskDefinitionName, &context.Context, serviceconfigs, taskRoleArn, ecsParamsFileName)
+	taskDefinition, err := utils.ConvertToTaskDefinition(
+		taskDefinitionName,
+		&context.Context,
+		serviceconfigs,
+		taskRoleArn,
+		requiredCompatibilities,
+		p.context.ECSParams,
+	)
+
 	if err != nil {
 		return err
 	}

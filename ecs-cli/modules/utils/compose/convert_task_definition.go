@@ -62,9 +62,18 @@ func getSupportedComposeYamlOptionsMap() map[string]bool {
 	return optionsMap
 }
 
+type TaskDefParams struct {
+	networkMode   string
+	taskRoleArn   string
+	cpu           string
+	memory        string
+	containerDefs ContainerDefs
+	executionRoleArn string
+}
+
 // ConvertToTaskDefinition transforms the yaml configs to its ecs equivalent (task definition)
 func ConvertToTaskDefinition(taskDefinitionName string, context *project.Context,
-	serviceConfigs *config.ServiceConfigs, taskRoleArn string, ecsParamsFileName string) (*ecs.TaskDefinition, error) {
+	serviceConfigs *config.ServiceConfigs, taskRoleArn string, requiredCompatibilites string, ecsParams *ECSParams) (*ecs.TaskDefinition, error) {
 
 	if serviceConfigs.Len() == 0 {
 		return nil, errors.New("cannot create a task definition with no containers; invalid service config")
@@ -72,21 +81,15 @@ func ConvertToTaskDefinition(taskDefinitionName string, context *project.Context
 
 	logUnsupportedConfigFields(context.Project)
 
-	ecsParams, err := readECSParams(ecsParamsFileName)
+	// Instantiates zero values for fields on task def specified by ecs-params
+	taskDefParams, err := convertTaskDefParams(ecsParams)
 	if err != nil {
 		return nil, err
 	}
 
-	var networkMode string
-	var ecsParamsContainerDefs ContainerDefs
-
-	if ecsParams != nil {
-		networkMode = ecsParams.TaskDefinition.NetworkMode
-		// The task-role-arn flag should take precedence over a taskRoleArn value specified in ECS fields file
-		if taskRoleArn == "" {
-			taskRoleArn = ecsParams.TaskDefinition.TaskRoleArn
-		}
-		ecsParamsContainerDefs = ecsParams.TaskDefinition.ContainerDefinitions
+	// The task-role-arn flag takes precedence over a taskRoleArn value specified in ecs-params file.
+	if taskRoleArn == "" {
+		taskRoleArn = taskDefParams.taskRoleArn
 	}
 
 	// Create containerDefinitions
@@ -108,7 +111,7 @@ func ConvertToTaskDefinition(taskDefinitionName string, context *project.Context
 		// Check if there are ecs-params specified for the container
 		ecsContainerDef := &ContainerDef{Essential: true}
 
-		if cd, ok := ecsParamsContainerDefs[name]; ok {
+		if cd, ok := taskDefParams.containerDefs[name]; ok {
 			ecsContainerDef = &cd
 		}
 
@@ -137,7 +140,14 @@ func ConvertToTaskDefinition(taskDefinitionName string, context *project.Context
 		ContainerDefinitions: containerDefinitions,
 		Volumes:              convertToECSVolumes(volumes),
 		TaskRoleArn:          aws.String(taskRoleArn),
-		NetworkMode:          aws.String(networkMode),
+		NetworkMode:          aws.String(taskDefParams.networkMode),
+		Cpu:                  aws.String(taskDefParams.cpu),
+		Memory:               aws.String(taskDefParams.memory),
+		ExecutionRoleArn:     aws.String(taskDefParams.executionRoleArn),
+	}
+
+	if requiredCompatibilites != "" {
+		taskDefinition.RequiresCompatibilities = []*string{aws.String(requiredCompatibilites)}
 	}
 
 	return taskDefinition, nil
@@ -595,4 +605,46 @@ func SortedGoString(v interface{}) (string, error) {
 		return "", err
 	}
 	return string(b), nil
+}
+
+func hasEssential(ecsParamsContainerDefs ContainerDefs, count int) bool {
+	// If the customer does not set the "essential" field on any container
+	// definition, ECS will mark all containers in a TaskDefinition as
+	// essential. Previously, since the customer could not pass in the
+	// essential field, Task Definitions created through the CLI marked all
+	// containers as essential.
+
+	// Now that the essential field can  be set by the customer via the
+	// the ecs-params.yml file, we want to make sure that there is still at
+	// least one essential container, i.e. that the customer does not
+	// explicitly set all containers to be non-essential.
+
+	nonEssentialCount := 0
+
+	for _, containerDef := range ecsParamsContainerDefs {
+		if !containerDef.Essential {
+			nonEssentialCount += 1
+		}
+	}
+
+	// 'count' is the total number of containers specified in the service config
+	return nonEssentialCount != count
+}
+
+// Converts fields from ecsParams into the appropriate types for fields on an
+// ECS Task Definition
+func convertTaskDefParams(ecsParams *ECSParams) (params TaskDefParams, e error) {
+	if ecsParams == nil {
+		return params, nil
+	}
+
+	taskDef := ecsParams.TaskDefinition
+	params.networkMode = taskDef.NetworkMode
+	params.taskRoleArn = taskDef.TaskRoleArn
+	params.containerDefs = taskDef.ContainerDefinitions
+	params.cpu = taskDef.TaskSize.Cpu
+	params.memory = taskDef.TaskSize.Memory
+	params.executionRoleArn = taskDef.ExecutionRole
+
+	return params, nil
 }
