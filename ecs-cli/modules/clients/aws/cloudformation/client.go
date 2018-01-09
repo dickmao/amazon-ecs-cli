@@ -122,12 +122,15 @@ func (c *cloudformationClient) Initialize(params *config.CLIParams) {
 
 // CreateStack creates the cloudformation stack by invoking the sdk's CreateStack API and returns the stack id.
 func (c *cloudformationClient) CreateStack(template string, stackName string, params *CfnStackParams) (string, error) {
-	output, err := c.client.CreateStack(&cloudformation.CreateStackInput{
+	input := cloudformation.CreateStackInput{
 		TemplateBody: aws.String(template),
 		Capabilities: aws.StringSlice([]string{cloudformation.CapabilityCapabilityIam}),
 		StackName:    aws.String(stackName),
 		Parameters:   params.Get(),
-	})
+	}
+	// input.SetOnFailure(cloudformation.OnFailureDoNothing)
+
+	output, err := c.client.CreateStack(&input)
 
 	if err != nil {
 		return "", err

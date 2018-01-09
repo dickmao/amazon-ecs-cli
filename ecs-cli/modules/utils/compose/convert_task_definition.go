@@ -112,17 +112,24 @@ func ConvertToTaskDefinition(taskDefinitionName string, context *project.Context
 			ecsContainerDef = &cd
 		}
 
-		count := len(serviceConfigs.Keys())
-
-		if !hasEssential(ecsParamsContainerDefs, count) {
-			return nil, errors.New("Task definition does not have any essential containers.")
-		}
-
 		if err := convertToContainerDef(context, serviceConfig, volumes, containerDef, ecsContainerDef); err != nil {
 			return nil, err
 		}
 
 		containerDefinitions = append(containerDefinitions, containerDef)
+	}
+
+	// Now that the essential field can  be set by the customer via the
+	// the ecs-params.yml file, we want to make sure that there is still at
+	// least one essential container, i.e. that the customer does not
+	// explicitly set all containers to be non-essential.
+	for i, v := range containerDefinitions {
+		if *v.Essential {
+			break
+		}
+		if i == len(containerDefinitions)-1 {
+			return nil, errors.New("Task definition does not have any essential containers.")
+		}
 	}
 
 	taskDefinition := &ecs.TaskDefinition{
@@ -588,28 +595,4 @@ func SortedGoString(v interface{}) (string, error) {
 		return "", err
 	}
 	return string(b), nil
-}
-
-func hasEssential(ecsParamsContainerDefs ContainerDefs, count int) bool {
-	// If the customer does not set the "essential" field on any container
-	// definition, ECS will mark all containers in a TaskDefinition as
-	// essential. Previously, since the customer could not pass in the
-	// essential field, Task Definitions created through the CLI marked all
-	// containers as essential.
-
-	// Now that the essential field can  be set by the customer via the
-	// the ecs-params.yml file, we want to make sure that there is still at
-	// least one essential container, i.e. that the customer does not
-	// explicitly set all containers to be non-essential.
-
-	nonEssentialCount := 0
-
-	for _, containerDef := range ecsParamsContainerDefs {
-		if !containerDef.Essential {
-			nonEssentialCount += 1
-		}
-	}
-
-	// 'count' is the total number of containers specified in the service config
-	return nonEssentialCount != count
 }

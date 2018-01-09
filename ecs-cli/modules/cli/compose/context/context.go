@@ -14,6 +14,7 @@
 package context
 
 import (
+	"errors"
 	"os"
 	"path"
 	"path/filepath"
@@ -61,16 +62,20 @@ func (context *Context) Open() error {
 // 2. Environment variable
 // 3. Current working directory
 func (context *Context) SetProjectName() error {
-	projectName := context.CLIContext.GlobalString(command.ProjectNameFlag)
-	if projectName != "" {
-		context.ProjectName = projectName
-		return nil
-	}
-	projectName, err := context.lookupProjectName()
-	if err != nil {
+	var err error
+	serviceconfigs := strings.Join(context.ServiceConfigs, "-")
+	if context.CLIContext.GlobalIsSet(command.ProjectNameFlag) {
+		context.ProjectName = context.CLIContext.GlobalString(command.ProjectNameFlag)
+	} else if context.ProjectName, err = context.lookupProjectName(); err != nil {
 		return err
 	}
-	context.ProjectName = projectName
+	if serviceconfigs != "" && context.ProjectName != "" {
+		context.ProjectName += "-"
+	}
+	context.ProjectName += serviceconfigs
+	if context.ProjectName == "" {
+		return errors.New("Project name cannot be empty")
+	}
 	return nil
 }
 
@@ -92,13 +97,12 @@ func (c *Context) lookupProjectName() (string, error) {
 	f = toUnixPath(f)
 
 	parent := path.Base(path.Dir(f))
-	serviceconfigs := strings.Join(append([]string{""}, c.ServiceConfigs...), "-")
 	if parent != "" && parent != "." {
-		return parent + serviceconfigs, nil
+		return parent, nil
 	} else if wd, err := os.Getwd(); err != nil {
-		return "" + serviceconfigs, err
+		return "", err
 	} else {
-		return path.Base(toUnixPath(wd)) + serviceconfigs, nil
+		return path.Base(toUnixPath(wd)), nil
 	}
 }
 
