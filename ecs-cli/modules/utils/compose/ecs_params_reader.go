@@ -16,12 +16,13 @@ package utils
 // ECS Params Reader is used to parse the ecs-params.yml file and marshal the data into the ECSParams struct
 
 import (
+	"io/ioutil"
+	"os"
+
 	"github.com/aws/aws-sdk-go/aws"
 	"github.com/aws/aws-sdk-go/service/ecs"
 	"github.com/pkg/errors"
 	"gopkg.in/yaml.v2"
-	"io/ioutil"
-	"os"
 )
 
 type ECSParams struct {
@@ -32,11 +33,12 @@ type ECSParams struct {
 
 // EcsTaskDef corresponds to fields in an ECS TaskDefinition
 type EcsTaskDef struct {
-	NetworkMode          string        `yaml:"ecs_network_mode"`
-	TaskRoleArn          string        `yaml:"task_role_arn"`
-	ContainerDefinitions ContainerDefs `yaml:"services"`
-	ExecutionRole        string        `yaml:"task_execution_role"`
-	TaskSize             TaskSize      `yaml:"task_size"`           // Needed to run FARGATE tasks
+	NetworkMode          string               `yaml:"ecs_network_mode"`
+	TaskRoleArn          string               `yaml:"task_role_arn"`
+	ContainerDefinitions ContainerDefs        `yaml:"services"`
+	ExecutionRole        string               `yaml:"task_execution_role"`
+	TaskSize             TaskSize             `yaml:"task_size"` // Needed to run FARGATE tasks
+	PlacementConstraints PlacementConstraints `yaml:"placementConstraints"`
 }
 
 type ContainerDefs map[string]ContainerDef
@@ -48,6 +50,11 @@ type ContainerDef struct {
 type TaskSize struct {
 	Cpu    string `yaml:"cpu_limit"`
 	Memory string `yaml:"mem_limit"`
+}
+
+type PlacementConstraints struct {
+	Expression string `yaml:"expression"`
+	Type       string `yaml:"type"`
 }
 
 // RunParams specifies non-TaskDefinition specific parameters

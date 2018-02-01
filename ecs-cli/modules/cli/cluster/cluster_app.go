@@ -277,7 +277,7 @@ func createCluster(context *cli.Context, rdwr config.ReadWriter, ecsClient ecscl
 
 	// Create cfn stack
 	var template string
-	customTemplate := context.String(command.CustomTemplateFlag)
+	customTemplate := context.String(flags.CustomTemplateFlag)
 	if customTemplate != "" {
 		bytes, err := ioutil.ReadFile(customTemplate)
 		if err != nil {
@@ -463,8 +463,8 @@ func hasCustomRole(context *cli.Context) bool {
 }
 
 func validateCustomTemplate(context *cli.Context) error {
-	if context.String(command.CustomTemplateFlag) == "" {
-		return fmt.Errorf("You must specify a custom '--%s' flag", command.CustomTemplateFlag)
+	if context.String(flags.CustomTemplateFlag) == "" {
+		return fmt.Errorf("You must specify a custom '--%s' flag", flags.CustomTemplateFlag)
 	}
 	return nil
 }

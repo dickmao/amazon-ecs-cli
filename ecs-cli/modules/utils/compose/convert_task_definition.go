@@ -63,12 +63,14 @@ func getSupportedComposeYamlOptionsMap() map[string]bool {
 }
 
 type TaskDefParams struct {
-	networkMode   string
-	taskRoleArn   string
-	cpu           string
-	memory        string
-	containerDefs ContainerDefs
-	executionRoleArn string
+	networkMode         string
+	taskRoleArn         string
+	cpu                 string
+	memory              string
+	containerDefs       ContainerDefs
+	executionRoleArn    string
+	placementExpression string
+	placementType       string
 }
 
 // ConvertToTaskDefinition transforms the yaml configs to its ecs equivalent (task definition)
@@ -90,6 +92,14 @@ func ConvertToTaskDefinition(taskDefinitionName string, context *project.Context
 	// The task-role-arn flag takes precedence over a taskRoleArn value specified in ecs-params file.
 	if taskRoleArn == "" {
 		taskRoleArn = taskDefParams.taskRoleArn
+	}
+
+	// Create placementConstraints
+	placementConstraints := []*ecs.TaskDefinitionPlacementConstraint{
+		&ecs.TaskDefinitionPlacementConstraint{
+			Expression: &taskDefParams.placementExpression,
+			Type:       &taskDefParams.placementType,
+		},
 	}
 
 	// Create containerDefinitions
@@ -144,6 +154,7 @@ func ConvertToTaskDefinition(taskDefinitionName string, context *project.Context
 		Cpu:                  aws.String(taskDefParams.cpu),
 		Memory:               aws.String(taskDefParams.memory),
 		ExecutionRoleArn:     aws.String(taskDefParams.executionRoleArn),
+		PlacementConstraints: placementConstraints,
 	}
 
 	if requiredCompatibilites != "" {
@@ -645,6 +656,8 @@ func convertTaskDefParams(ecsParams *ECSParams) (params TaskDefParams, e error) 
 	params.cpu = taskDef.TaskSize.Cpu
 	params.memory = taskDef.TaskSize.Memory
 	params.executionRoleArn = taskDef.ExecutionRole
+	params.placementType = taskDef.PlacementConstraints.Type
+	params.placementExpression = taskDef.PlacementConstraints.Expression
 
 	return params, nil
 }

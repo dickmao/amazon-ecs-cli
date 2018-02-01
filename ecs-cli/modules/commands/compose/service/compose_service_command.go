@@ -97,7 +97,7 @@ func psServiceCommand(factory composeFactory.ProjectFactory) cli.Command {
 		Aliases:      []string{"list"},
 		Usage:        "Lists all the containers in your cluster that belong to the service created with the compose project.",
 		Action:       compose.WithProject(factory, compose.ProjectPs, true),
-		Flags:        flags.OptionalConfigFlags(),
+		Flags:        append(flags.OptionalConfigFlags(), OptionalServiceConfigsFlag()),
 		OnUsageError: flags.UsageErrorFactory("ps"),
 	}
 }
@@ -196,7 +196,7 @@ func ComposeServiceTimeoutFlag() cli.Flag {
 
 func OptionalServiceConfigsFlag() cli.Flag {
 	return cli.StringSliceFlag{
-		Name: command.ServiceConfigsFlag + ", s",
+		Name: flags.ServiceConfigsFlag + ", s",
 		Usage: fmt.Sprintf(
 			"[Optional] Specifies services in the compose file. Defaults to all.",
 		),

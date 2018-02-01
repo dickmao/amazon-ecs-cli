@@ -208,7 +208,6 @@
 			"ImportPath": "github.com/aws/aws-sdk-go/service/sts/stsiface",
 			"Comment": "v1.12.26-31-gec9cc4c",
 			"Rev": "ec9cc4c48dd220c476f5986c9bd51c884a898aff"
->>>>>>> master
 		},
 		{
 			"ImportPath": "github.com/awslabs/amazon-ecr-credential-helper/ecr-login/api",
