@@ -16,9 +16,11 @@ package utils
 import (
 	"fmt"
 	"io/ioutil"
+	"math/rand"
 	"os"
 	"reflect"
 	"strconv"
+	"strings"
 	"testing"
 
 	"github.com/aws/aws-sdk-go/aws"
@@ -1081,39 +1083,43 @@ func TestMemReservationHigherThanMemLimit(t *testing.T) {
 	assert.EqualError(t, err, "mem_limit should not be less than mem_reservation")
 }
 
-func TestSortedGoString(t *testing.T) {
+func TestRegisterTaskDefinitionInputEquivalence(t *testing.T) {
 	family := aws.String("family1")
-	name := aws.String("foo")
-	command := aws.StringSlice([]string{"dark", "side", "of", "the", "moon"})
 	dockerLabels := map[string]string{
 		"label1":         "",
 		"com.foo.label2": "value",
 	}
-
+	cdefs := []*ecs.ContainerDefinition{}
+	N := 10
+	for i := 0; i < N; i++ {
+		command := make([]string, i+1)
+		for j := 0; j < i+1; j++ {
+			command[j] = strings.Repeat(string(rune(65+j)), i+1)
+		}
+		cdefs = append(cdefs, &ecs.ContainerDefinition{
+			Name:         aws.String(strings.Repeat(string(rune(65+i)), i+1)),
+			Command:      aws.StringSlice(command),
+			DockerLabels: aws.StringMap(dockerLabels),
+		})
+	}
 	inputA := ecs.RegisterTaskDefinitionInput{
-		Family: family,
-		ContainerDefinitions: []*ecs.ContainerDefinition{
-			{
-				Name:         name,
-				Command:      command,
-				DockerLabels: aws.StringMap(dockerLabels),
-			},
-		},
-	}
-	inputB := ecs.RegisterTaskDefinitionInput{
-		ContainerDefinitions: []*ecs.ContainerDefinition{
-			{
-				Command:      command,
-				Name:         name,
-				DockerLabels: aws.StringMap(dockerLabels),
-			},
-		},
-		Family: family,
+		Family:               family,
+		ContainerDefinitions: cdefs,
 	}
 
-	strA, err := SortedGoString(inputA)
+	shuffle_cdefs := make([]*ecs.ContainerDefinition, len(cdefs))
+	for i, v := range rand.Perm(len(cdefs)) {
+		shuffle_cdefs[v] = cdefs[i]
+	}
+
+	inputB := ecs.RegisterTaskDefinitionInput{
+		ContainerDefinitions: shuffle_cdefs,
+		Family:               family,
+	}
+
+	strA, err := SortedGoString(SortedContainerDefinitionsByName(&inputA))
 	assert.NoError(t, err, "Unexpected error generating sorted map string")
-	strB, err := SortedGoString(inputB)
+	strB, err := SortedGoString(SortedContainerDefinitionsByName(&inputB))
 	assert.NoError(t, err, "Unexpected error generating sorted map string")
 
 	assert.Equal(t, strA, strB, "Sorted inputs should match")

@@ -302,7 +302,7 @@ func (c *ecsClient) constructTaskDefinitionCacheHash(taskDefinition *ecs.TaskDef
 	// Get the region from the ecsClient configuration
 	region := aws.StringValue(c.params.Session.Config.Region)
 	awsUserAccountId := utils.GetAwsAccountIdFromArn(aws.StringValue(taskDefinition.TaskDefinitionArn))
-	sortedRequestString, err := utils.SortedGoString(request)
+	sortedRequestString, err := utils.SortedGoString(utils.SortedContainerDefinitionsByName(request))
 	if err != nil {
 		log.WithFields(log.Fields{
 			"error": err,

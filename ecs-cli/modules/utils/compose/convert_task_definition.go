@@ -17,6 +17,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"reflect"
+	"sort"
 	"strconv"
 	"strings"
 
@@ -608,7 +609,7 @@ func convertToULimits(cfgUlimits yaml.Ulimits) ([]*ecs.Ulimit, error) {
 	return ulimits, nil
 }
 
-// GoString returns deterministic string representation
+// GoString returns nondeterministic string representation
 // json Marshal sorts map keys, making it deterministic
 func SortedGoString(v interface{}) (string, error) {
 	b, err := json.Marshal(v)
@@ -616,6 +617,16 @@ func SortedGoString(v interface{}) (string, error) {
 		return "", err
 	}
 	return string(b), nil
+}
+
+func SortedContainerDefinitionsByName(request *ecs.RegisterTaskDefinitionInput) ecs.RegisterTaskDefinitionInput {
+	cdefs := request.ContainerDefinitions
+	sort.Slice(cdefs, func(i, j int) bool {
+		return *cdefs[i].Name < *cdefs[j].Name
+	})
+	sorted := *request
+	sorted.ContainerDefinitions = cdefs
+	return sorted
 }
 
 func hasEssential(ecsParamsContainerDefs ContainerDefs, count int) bool {
