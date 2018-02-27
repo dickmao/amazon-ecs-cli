@@ -37,6 +37,7 @@ const (
 	ParameterKeyAssociatePublicIPAddress = "AssociatePublicIpAddress"
 	ParameterKeyInstanceRole             = "InstanceRole"
 	ParameterKeyIsFargate                = "IsFargate"
+	ParameterKeyDefaultTargetGroupName   = "DefaultTargetGroupName"
 )
 
 var ParameterNotFoundError = errors.New("Parameter not found")
@@ -71,6 +72,7 @@ func init() {
 		ParameterKeyCluster,
 		ParameterKeyAmiId,
 		ParameterKeyAssociatePublicIPAddress,
+		ParameterKeyDefaultTargetGroupName,
 	}
 }
 

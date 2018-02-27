@@ -43,17 +43,18 @@ var flagNamesToStackParameterKeys map[string]string
 
 func init() {
 	flagNamesToStackParameterKeys = map[string]string{
-		flags.AsgMaxSizeFlag:    cloudformation.ParameterKeyAsgMaxSize,
-		flags.VpcAzFlag:         cloudformation.ParameterKeyVPCAzs,
-		flags.SecurityGroupFlag: cloudformation.ParameterKeySecurityGroup,
-		flags.SourceCidrFlag:    cloudformation.ParameterKeySourceCidr,
-		flags.EcsPortFlag:       cloudformation.ParameterKeyEcsPort,
-		flags.SubnetIdsFlag:     cloudformation.ParameterKeySubnetIds,
-		flags.VpcIdFlag:         cloudformation.ParameterKeyVpcId,
-		flags.InstanceTypeFlag:  cloudformation.ParameterKeyInstanceType,
-		flags.KeypairNameFlag:   cloudformation.ParameterKeyKeyPairName,
-		flags.ImageIdFlag:       cloudformation.ParameterKeyAmiId,
-		flags.InstanceRoleFlag:  cloudformation.ParameterKeyInstanceRole,
+		flags.AsgMaxSizeFlag:             cloudformation.ParameterKeyAsgMaxSize,
+		flags.VpcAzFlag:                  cloudformation.ParameterKeyVPCAzs,
+		flags.SecurityGroupFlag:          cloudformation.ParameterKeySecurityGroup,
+		flags.SourceCidrFlag:             cloudformation.ParameterKeySourceCidr,
+		flags.EcsPortFlag:                cloudformation.ParameterKeyEcsPort,
+		flags.SubnetIdsFlag:              cloudformation.ParameterKeySubnetIds,
+		flags.VpcIdFlag:                  cloudformation.ParameterKeyVpcId,
+		flags.InstanceTypeFlag:           cloudformation.ParameterKeyInstanceType,
+		flags.KeypairNameFlag:            cloudformation.ParameterKeyKeyPairName,
+		flags.ImageIdFlag:                cloudformation.ParameterKeyAmiId,
+		flags.InstanceRoleFlag:           cloudformation.ParameterKeyInstanceRole,
+		flags.DefaultTargetGroupNameFlag: cloudformation.ParameterKeyDefaultTargetGroupName,
 	}
 }
 

@@ -73,6 +73,7 @@ const (
 	EcsPortFlag                     = "port"
 	SubnetIdsFlag                   = "subnets"
 	VpcIdFlag                       = "vpc"
+	DefaultTargetGroupNameFlag      = "target-group"
 	InstanceTypeFlag                = "instance-type"
 	InstanceRoleFlag                = "instance-role"
 	ImageIdFlag                     = "image-id"

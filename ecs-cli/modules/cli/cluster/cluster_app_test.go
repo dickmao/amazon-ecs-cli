@@ -96,6 +96,7 @@ func TestClusterUp(t *testing.T) {
 	flagSet := flag.NewFlagSet("ecs-cli-up", 0)
 	flagSet.Bool(flags.CapabilityIAMFlag, true, "")
 	flagSet.String(flags.KeypairNameFlag, "default", "")
+	flagSet.String(flags.DefaultTargetGroupNameFlag, "default", "")
 
 	context := cli.NewContext(nil, flagSet, nil)
 	rdwr := newMockReadWriter()
