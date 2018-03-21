@@ -289,7 +289,8 @@ func createCluster(context *cli.Context, rdwr config.ReadWriter, ecsClient ecscl
 		template = cloudformation.GetTemplate()
 	}
 
-	if _, err := cfnClient.CreateStack(template, stackName, cfnParams); err != nil {
+	disableRollback := context.Bool(flags.DisableRollbackFlag)
+	if _, err := cfnClient.CreateStack(template, stackName, disableRollback, cfnParams); err != nil {
 		return err
 	}
 

@@ -82,6 +82,7 @@ const (
 	NoAutoAssignPublicIPAddressFlag = "no-associate-public-ip-address"
 	ForceFlag                       = "force"
 	CustomTemplateFlag              = "template"
+	DisableRollbackFlag             = "disable-rollback"
 
 	// Image
 	RegistryIdFlag = "registry-id"

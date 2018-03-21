@@ -90,7 +90,7 @@ func init() {
 type CloudformationClient interface {
 	// TODO: Modify the interface and tbe client to not have the Initialize method.
 	Initialize(*config.CLIParams)
-	CreateStack(string, string, *CfnStackParams) (string, error)
+	CreateStack(string, string, bool, *CfnStackParams) (string, error)
 	WaitUntilCreateComplete(string) error
 	DeleteStack(string) error
 	WaitUntilDeleteComplete(string) error
@@ -123,12 +123,13 @@ func (c *cloudformationClient) Initialize(params *config.CLIParams) {
 }
 
 // CreateStack creates the cloudformation stack by invoking the sdk's CreateStack API and returns the stack id.
-func (c *cloudformationClient) CreateStack(template string, stackName string, params *CfnStackParams) (string, error) {
+func (c *cloudformationClient) CreateStack(template string, stackName string, disableRollback bool, params *CfnStackParams) (string, error) {
 	input := cloudformation.CreateStackInput{
-		TemplateBody: aws.String(template),
-		Capabilities: aws.StringSlice([]string{cloudformation.CapabilityCapabilityIam}),
-		StackName:    aws.String(stackName),
-		Parameters:   params.Get(),
+		TemplateBody:    aws.String(template),
+		Capabilities:    aws.StringSlice([]string{cloudformation.CapabilityCapabilityIam}),
+		StackName:       aws.String(stackName),
+		DisableRollback: aws.Bool(disableRollback),
+		Parameters:      params.Get(),
 	}
 	// input.SetOnFailure(cloudformation.OnFailureDoNothing)
 

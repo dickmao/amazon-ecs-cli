@@ -151,6 +151,10 @@ func clusterUpFlags() []cli.Flag {
 			Name:  flags.ForceFlag + ", f",
 			Usage: "[Optional] Forces the recreation of any existing resources that match your current configuration. This option is useful for cleaning up stale resources from previous failed attempts.",
 		},
+		cli.BoolFlag{
+			Name:  flags.DisableRollbackFlag,
+			Usage: "[Optional] Disable rollback on stack create failure.",
+		},
 		flags.OptionalLaunchTypeFlag(),
 	}
 }
