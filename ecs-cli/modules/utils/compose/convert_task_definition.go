@@ -137,14 +137,14 @@ func ConvertToTaskDefinition(taskDefinitionName string, context *project.Context
 	// the ecs-params.yml file, we want to make sure that there is still at
 	// least one essential container, i.e. that the customer does not
 	// explicitly set all containers to be non-essential.
-	for i, v := range containerDefinitions {
-		if *v.Essential {
-			break
-		}
-		if i == len(containerDefinitions)-1 {
-			return nil, errors.New("Task definition does not have any essential containers.")
-		}
-	}
+	// for i, v := range containerDefinitions {
+	// 	if *v.Essential {
+	// 		break
+	// 	}
+	// 	if i == len(containerDefinitions)-1 {
+	// 		return nil, errors.New("Task definition does not have any essential containers.")
+	// 	}
+	// }
 
 	taskDefinition := &ecs.TaskDefinition{
 		Family:               aws.String(taskDefinitionName),
