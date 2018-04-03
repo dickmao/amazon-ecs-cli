@@ -185,6 +185,15 @@ func OptionalCreateLogsFlag() cli.Flag {
 	}
 }
 
+func OptionalServiceConfigsFlag() cli.Flag {
+	return cli.StringSliceFlag{
+		Name: ServiceConfigsFlag + ", s",
+		Usage: fmt.Sprintf(
+			"[Optional] Specifies services in the compose file. Defaults to all.",
+		),
+	}
+}
+
 // UsageErrorFactory Returns a usage error function for the specified command
 func UsageErrorFactory(command string) func(*cli.Context, error, bool) error {
 	return func(c *cli.Context, err error, isSubcommand bool) error {
