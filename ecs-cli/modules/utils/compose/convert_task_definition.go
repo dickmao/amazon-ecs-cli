@@ -64,12 +64,14 @@ func getSupportedComposeYamlOptionsMap() map[string]bool {
 }
 
 type TaskDefParams struct {
-	networkMode      string
-	taskRoleArn      string
-	cpu              string
-	memory           string
-	containerDefs    ContainerDefs
-	executionRoleArn string
+	networkMode         string
+	taskRoleArn         string
+	cpu                 string
+	memory              string
+	containerDefs       ContainerDefs
+	executionRoleArn    string
+        placementExpression string
+        placementType       string
 }
 
 // ConvertToTaskDefinition transforms the yaml configs to its ecs equivalent (task definition)
