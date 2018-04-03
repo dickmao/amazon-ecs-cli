@@ -19,7 +19,7 @@ import (
 	"os"
 	"strings"
 
-	"github.com/Sirupsen/logrus"
+	"github.com/sirupsen/logrus"
 	"github.com/aws/amazon-ecs-cli/ecs-cli/modules/commands/flags"
 	"github.com/aws/amazon-ecs-cli/ecs-cli/modules/config"
 	"github.com/pkg/errors"
@@ -161,13 +161,15 @@ func Profile(context *cli.Context) error {
 	if err := fieldEmpty(accessKey, flags.AccessKeyFlag); err != nil {
 		return err
 	}
+	sessionToken := context.String(flags.SessionTokenFlag)
 	profileName := context.String(flags.ProfileNameFlag)
 	if err := fieldEmpty(profileName, flags.ProfileNameFlag); err != nil {
 		return err
 	}
 	profile := &config.Profile{
-		AWSAccessKey: accessKey,
-		AWSSecretKey: secretKey,
+		AWSAccessKey:    accessKey,
+		AWSSecretKey:    secretKey,
+		AWSSessionToken: sessionToken,
 	}
 
 	rdwr, err := config.NewReadWriter()

@@ -16,7 +16,7 @@ package configureCommand
 import (
 	"fmt"
 
-	"github.com/Sirupsen/logrus"
+	"github.com/sirupsen/logrus"
 	"github.com/aws/amazon-ecs-cli/ecs-cli/modules/cli/configure"
 	"github.com/aws/amazon-ecs-cli/ecs-cli/modules/commands/flags"
 	"github.com/urfave/cli"
@@ -143,6 +143,13 @@ func configureProfileFlags() []cli.Flag {
 			Usage: fmt.Sprintf(
 				"Specifies the profile name to use for this configuration.",
 			),
+		},
+		cli.StringFlag{
+			Name: flags.SessionTokenFlag,
+			Usage: fmt.Sprintf(
+				"[Optional] Specifies the AWS session token to use. The ECS CLI uses the value of your $AWS_SESSION_TOKEN environment variable if it is set.",
+			),
+			EnvVar: "AWS_SESSION_TOKEN",
 		},
 	}
 }

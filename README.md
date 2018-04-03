@@ -1,16 +1,14 @@
 # Amazon ECS CLI
 
-The Amazon ECS Command Line Interface (CLI) is a command line interface for Amazon Elastic Container
+The Amazon ECS Command Line Interface (CLI) is a command line tool for Amazon Elastic Container
 Service (Amazon ECS) that provides high-level commands to simplify creating, updating, and
 monitoring clusters and tasks from a local development environment. The Amazon ECS CLI supports
 [Docker Compose](https://docs.docker.com/compose/), a popular open-source tool for defining and
 running multi-container applications. Use the CLI as part of your everyday development and testing
-cycle as an alternative to the AWS Management Console.
+cycle as an alternative to the AWS Management Console or the AWS CLI.
 
 For more information about Amazon ECS, see the [Amazon ECS Developer
-Guide](http://docs.aws.amazon.com/AmazonECS/latest/developerguide/Welcome.html). For information
-about installing and using the Amazon ECS CLI, see the [ECS Command Line
-Interface](http://docs.aws.amazon.com/AmazonECS/latest/developerguide/ECS_CLI.html).
+Guide](http://docs.aws.amazon.com/AmazonECS/latest/developerguide/Welcome.html).
 
 The AWS Command Line Interface (AWS CLI) is a unified client for AWS services that provides commands
 for all public API operations. These commands are lower level than those provided by the Amazon ECS
@@ -42,6 +40,8 @@ Line Interface](http://aws.amazon.com/cli/) product detail page.
 
 Download the binary archive for your platform, and install the binary on your `$PATH`.
 You can use the provided `md5` hash to verify the integrity of your download.
+
+For information about installing and using the Amazon ECS CLI, see the [ECS Command Line Interface](http://docs.aws.amazon.com/AmazonECS/latest/developerguide/ECS_CLI.html).
 
 ### Latest version
 * Linux:
@@ -165,6 +165,9 @@ If you are trying to use Multi-Factor Authentication, please see this comment an
    a) AWS_PROFILE environment variable (OR) –aws-
    b) AWS_DEFAULT_PROFILE environment variable (defaults to 'default')
 
+
+For more information, see [ECS CLI Configuration](https://docs.aws.amazon.com/AmazonECS/latest/developerguide/ECS_CLI_Configuration.html).
+
 ## Using the CLI
 
 ECS now offers two different launch types for tasks and services: EC2 and FARGATE. With the FARGATE
@@ -180,52 +183,12 @@ service up`, regardless of which launch type is configured for your cluster (see
 Tasks](#startingrunning-tasks)).
 
 ### Creating an ECS Cluster
-After installing the Amazon ECS CLI and configuring your credentials, you are ready to create an ECS cluster.
-
+After installing the Amazon ECS CLI and configuring your credentials, you are ready to create an ECS cluster. The basic command for creating a cluster is:
 ```
-NAME:
-   ecs-cli up - Creates the ECS cluster (if it does not already exist) and the AWS resources required to set up the cluster.
-
-USAGE:
-   ecs-cli up [command options] [arguments...]
-
-OPTIONS:
-   --verbose, --debug
-   --capability-iam                  Acknowledges that this command may create IAM resources. Required if --instance-role is not specified.
-                                     NOTE: Not applicable for launch type FARGATE.
-   --instance-role value             [Optional] Specifies a custom IAM Role for instances in your cluster. Required if --capability-iam is not specified.
-                                     NOTE: Not applicable for launch type FARGATE.
-   --keypair value                   [Optional] Specifies the name of an existing Amazon EC2 key pair to enable SSH access to the EC2 instances in your cluster.
-                                     Recommended for EC2 launch type. NOTE: Not applicable for launch type FARGATE.
-   --instance-type value             [Optional] Specifies the EC2 instance type for your container instances. Defaults to t2.micro. NOTE: Not applicable for launch type FARGATE.
-   --image-id value                  [Optional] Specify the AMI ID for your container instances. Defaults to amazon-ecs-optimized AMI. NOTE: Not applicable for launch type FARGATE.
-   --no-associate-public-ip-address  [Optional] Do not assign public IP addresses to new instances in this VPC. Unless this option is specified,
-                                     new instances in this VPC receive an automatically assigned public IP address. NOTE: Not applicable for launch type FARGATE.
-   --size value                      [Optional] Specifies the number of instances to launch and register to the cluster. Defaults to 1. NOTE: Not applicable for launch type FARGATE.
-   --azs value                       [Optional] Specifies a comma-separated list of 2 VPC Availability Zones in which to create subnets (these zones must have the available status).
-                                     This option is recommended if you do not specify a VPC ID with the --vpc option.
-                                     WARNING: Leaving this option blank can result in failure to launch container instances if an unavailable zone is chosen at random.
-   --security-group value            [Optional] Specifies a comma-separated list of existing security groups to associate with your container instances.
-                                     If you do not specify a security group here, then a new one is created.
-   --cidr value                      [Optional] Specifies a CIDR/IP range for the security group to use for container instances in your cluster.
-                                     This parameter is ignored if an existing security group is specified with the --security-group option. Defaults to 0.0.0.0/0.
-   --port value                      [Optional] Specifies a port to open on the security group to use for container instances in your cluster.
-                                     This parameter is ignored if an existing security group is specified with the --security-group option. Defaults to port 80.
-   --subnets value                   [Optional] Specifies a comma-separated list of existing VPC Subnet IDs in which to launch your container instances.
-                                     This option is required if you specify a VPC with the --vpc option.
-   --vpc value                       [Optional] Specifies the ID of an existing VPC in which to launch your container instances.
-                                     If you specify a VPC ID, you must specify a list of existing subnets in that VPC with the --subnets option.
-                                     If you do not specify a VPC ID, a new VPC is created with two subnets.
-   --force, -f                       [Optional] Forces the recreation of any existing resources that match your current configuration.
-                                     This option is useful for cleaning up stale resources from previous failed attempts.
-   --launch-type value               [Optional] Specifies the launch type. Options: EC2 or FARGATE. Overrides the default launch type stored in your cluster configuration.
-                                     Defaults to EC2 if a cluster configuration is not used.
-   --region value, -r value          [Optional] Specifies the AWS region to use. Defaults to the region configured using the configure command
-   --cluster-config value            [Optional] Specifies the name of the ECS cluster configuration to use. Defaults to the default cluster configuration.
-   --ecs-profile value               [Optional] Specifies the name of the ECS profile configuration to use. Defaults to the default profile configuration. [$ECS_PROFILE]
-   --aws-profile value               [Optional]  Use the AWS credentials from an existing named profile in ~/.aws/credentials. [$AWS_PROFILE]
-   --cluster value, -c value         [Optional] Specifies the ECS cluster name to use. Defaults to the cluster configured using the configure command
+ecs-cli up
 ```
+
+(To see all available options, run `ecs-cli up --help`)
 
 For example, to create an ECS cluster with two Amazon EC2 instances using the EC2 launch type, use
 the following command:
@@ -270,6 +233,14 @@ topic.
 
 Alternatively, you may specify one or more existing security group IDs with the `--security-group` option.
 
+You can also create an empty ECS cluster by using the `--empty` or `--e` flag:
+
+```
+ecs-cli --empty up --cluster myCluster
+```
+
+This is equivalent to the [create-cluster command](https://docs.aws.amazon.com/cli/latest/reference/ecs/create-cluster.html), and will not create a CloudFormation stack associated with your cluster.
+
 #### Creating a Fargate cluster
 
 ```
@@ -289,6 +260,8 @@ following resources:
 
 The subnet and VPC ids will be printed to the terminal once the creation is complete. You can then
 use the subnet IDs in your ECS Params file to launch Fargate tasks.
+
+For more information on using AWS Fargate, see the [ECS CLI Fargate tutorial](https://docs.aws.amazon.com/AmazonECS/latest/developerguide/ECS_CLI_tutorial_fargate.html).
 
 ### Starting/Running Tasks
 After the cluster is created, you can run tasks – groups of containers – on the ECS cluster. First,
@@ -313,7 +286,7 @@ for example:
 ```
 $ ecs-cli compose ps
 Name                                      State    Ports                     TaskDefinition
-fd8d5a69-87c5-46a4-80b6-51918092e600/web  RUNNING  54.209.244.64:80->80/tcp  ecscompose-web:1
+fd8d5a69-87c5-46a4-80b6-51918092e600/web  RUNNING  54.209.244.64:80->80/tcp  web:1
 ```
 
 Navigate your web browser to the task’s IP address to see the sample app running in the ECS cluster.
@@ -326,8 +299,8 @@ container instance fails for some reason).
 ```
 $ ecs-cli compose --project-name wordpress-test service create
 
-INFO[0000] Using Task definition                         TaskDefinition=ecscompose-wordpress-test:1
-INFO[0000] Created an ECS Service                        serviceName=ecscompose-service-wordpress-test taskDefinition=ecscompose-wordpress-test:1
+INFO[0000] Using Task definition                         TaskDefinition=wordpress-test:1
+INFO[0000] Created an ECS Service                        serviceName=wordpress-test taskDefinition=wordpress-test:1
 
 ```
 
@@ -339,9 +312,11 @@ the following command:
 ```
 $ ecs-cli compose --project-name wordpress-test service ps
 Name                                            State    Ports                      TaskDefinition
-34333aa6-e976-4096-991a-0ec4cd5af5bd/wordpress  RUNNING  54.186.138.217:80->80/tcp  ecscompose-wordpress-test:1
-34333aa6-e976-4096-991a-0ec4cd5af5bd/mysql      RUNNING                             ecscompose-wordpress-test:1
+34333aa6-e976-4096-991a-0ec4cd5af5bd/wordpress  RUNNING  54.186.138.217:80->80/tcp  wordpress-test:1
+34333aa6-e976-4096-991a-0ec4cd5af5bd/mysql      RUNNING                             wordpress-test:1
 ```
+
+See the `$ ecs-cli compose service` [documentation page](https://docs.aws.amazon.com/AmazonECS/latest/developerguide/cmd-ecs-cli-compose-service.html) for more information about available service options, including load balancing.
 
 ### Using ECS parameters
 

@@ -45,7 +45,7 @@ func TemplateUpCommand() cli.Command {
 func DownCommand() cli.Command {
 	return cli.Command{
 		Name:         "down",
-		Usage:        "Deletes the CloudFormation stack that was created by ecs-cli up and the associated resources. The --force option is required.",
+		Usage:        "Deletes the CloudFormation stack that was created by ecs-cli up and the associated resources.",
 		Action:       cluster.ClusterDown,
 		Flags:        append(clusterDownFlags(), flags.OptionalConfigFlags()...),
 		OnUsageError: flags.UsageErrorFactory("down"),
@@ -74,6 +74,17 @@ func PsCommand() cli.Command {
 
 func existingUpFlags() []cli.Flag {
 	return []cli.Flag{
+		cli.BoolFlag{
+			Name: flags.VerboseFlag + ",debug",
+		},
+		cli.BoolFlag{
+			Name:  flags.CapabilityIAMFlag,
+			Usage: "Acknowledges that this command may create IAM resources. Required if --instance-role is not specified. NOTE: Not applicable for launch type FARGATE or when creating an empty cluster.",
+		},
+		cli.BoolFlag{
+			Name:  flags.EmptyFlag + ",e",
+			Usage: "[Optional] Specifies that an ECS cluster will be created with no resources.",
+		},
 		cli.StringFlag{
 			Name:  flags.InstanceRoleFlag,
 			Usage: "[Optional] Specifies a custom IAM Role for instances in your cluster. Required if --capability-iam is not specified. NOTE: Not applicable for launch type FARGATE.",
@@ -163,7 +174,7 @@ func clusterDownFlags() []cli.Flag {
 	return []cli.Flag{
 		cli.BoolFlag{
 			Name:  flags.ForceFlag + ", f",
-			Usage: "Acknowledges that this command permanently deletes resources.",
+			Usage: "[Optional] Acknowledges that this command permanently deletes resources.",
 		},
 	}
 }

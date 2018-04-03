@@ -31,6 +31,7 @@ const (
 	cfnStackNamePrefixKey       = "cfn-stack-name-prefix"
 	awsAccessKey                = "aws_access_key_id"
 	awsSecretKey                = "aws_secret_access_key"
+	awsSessionToken             = "aws_session_token"
 	clusterKey                  = "cluster"
 	clustersKey                 = "clusters"
 	regionKey                   = "region"
@@ -46,6 +47,7 @@ type CLIConfig struct {
 	Region                   string
 	AWSAccessKey             string
 	AWSSecretKey             string
+	AWSSessionToken          string
 	ComposeServiceNamePrefix string
 	ComposeProjectNamePrefix string // Deprecated; remains for backwards compatibility
 	CFNStackName             string
@@ -55,8 +57,9 @@ type CLIConfig struct {
 
 // Profile is a simple struct for storing a single profile config
 type Profile struct {
-	AWSAccessKey string `yaml:"aws_access_key_id"`
-	AWSSecretKey string `yaml:"aws_secret_access_key"`
+	AWSAccessKey    string `yaml:"aws_access_key_id"`
+	AWSSecretKey    string `yaml:"aws_secret_access_key"`
+	AWSSessionToken string `yaml:"aws_session_token,omitempty"`
 }
 
 // Cluster is a simple struct for storing a single cluster config
@@ -140,10 +143,9 @@ func (cfg *CLIConfig) toAWSSessionWithConfig(context *cli.Context, svcConfig *aw
 		return sessionFromProfile("", region, svcConfig)
 	} else if isDefaultECSProfileCase(cfg) {
 		return sessionFromECSConfig(cfg, region, svcConfig)
-	} else {
-		return sessionFromProfile("", region, svcConfig)
 	}
 
+	return sessionFromProfile("", region, svcConfig)
 }
 
 func hasProfileFlags(context *cli.Context) bool {
@@ -160,10 +162,10 @@ func isDefaultECSProfileCase(cfg *CLIConfig) bool {
 
 func sessionFromECSConfig(cfg *CLIConfig, region string, svcConfig *aws.Config) (*session.Session, error) {
 	if cfg.AWSSecretKey != "" {
-		return sessionFromKeys(region, cfg.AWSAccessKey, cfg.AWSSecretKey, svcConfig)
-	} else {
-		return sessionFromProfile(cfg.AWSProfile, region, svcConfig)
+		return sessionFromKeys(region, cfg.AWSAccessKey, cfg.AWSSecretKey, cfg.AWSSessionToken, svcConfig)
 	}
+
+	return sessionFromProfile(cfg.AWSProfile, region, svcConfig)
 }
 
 func unsetEnvVars() (keyID string, secretKey string) {
@@ -189,9 +191,9 @@ func sessionFromProfile(profile string, region string, svcConfig *aws.Config) (*
 	})
 }
 
-func sessionFromKeys(region string, awsAccess string, awsSecret string, svcConfig *aws.Config) (*session.Session, error) {
+func sessionFromKeys(region string, awsAccess string, awsSecret string, sessionToken string, svcConfig *aws.Config) (*session.Session, error) {
 	svcConfig.Region = aws.String(region)
-	svcConfig.Credentials = credentials.NewStaticCredentials(awsAccess, awsSecret, "")
+	svcConfig.Credentials = credentials.NewStaticCredentials(awsAccess, awsSecret, sessionToken)
 	return session.NewSession(svcConfig)
 }
 
@@ -220,7 +222,7 @@ func (cfg *CLIConfig) getRegion() (string, error) {
 		}
 	}
 
-	var err error = nil
+	var err error
 	if region == "" {
 		region, err = cfg.getRegionFromAWSProfile()
 	}

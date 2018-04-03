@@ -18,7 +18,7 @@ import (
 	"strconv"
 	"strings"
 
-	log "github.com/Sirupsen/logrus"
+	log "github.com/sirupsen/logrus"
 	"github.com/aws/amazon-ecs-cli/ecs-cli/modules/cli/compose/context"
 	"github.com/aws/amazon-ecs-cli/ecs-cli/modules/cli/compose/entity"
 	"github.com/aws/amazon-ecs-cli/ecs-cli/modules/cli/compose/entity/types"
@@ -42,6 +42,7 @@ type Service struct {
 	deploymentConfig *ecs.DeploymentConfiguration
 	loadBalancer     *ecs.LoadBalancer
 	role             string
+	healthCheckGP    *int64
 }
 
 const (
@@ -82,6 +83,13 @@ func (s *Service) LoadContext() error {
 	if err != nil {
 		return err
 	}
+
+	// Health Check Grace Period
+	healthCheckGP, err := getInt64FromCLIContext(s.Context(), flags.HealthCheckGracePeriodFlag)
+	if err != nil {
+		return err
+	}
+	s.healthCheckGP = healthCheckGP
 
 	// Validates LoadBalancerName and TargetGroupArn cannot exist at the same time
 	// The rest will be taken care off by the API call
@@ -235,18 +243,18 @@ func (s *Service) Up() error {
 		}).Warn("You cannot update the load balancer configuration on an existing service.")
 	}
 
-	oldTaskDefinitionId := entity.GetIdFromArn(ecsService.TaskDefinition)
-	newTaskDefinitionId := entity.GetIdFromArn(newTaskDefinition.TaskDefinitionArn)
-
 	oldCount := aws.Int64Value(ecsService.DesiredCount)
 	newCount := int64(1)
 	if oldCount != 0 {
 		newCount = oldCount // get the current non-zero count
 	}
 
-	// if both the task definitions are the same, just start the service
+	// if both the task definitions are the same, call update with the new count
+	oldTaskDefinitionId := entity.GetIdFromArn(ecsService.TaskDefinition)
+	newTaskDefinitionId := entity.GetIdFromArn(newTaskDefinition.TaskDefinitionArn)
+
 	if oldTaskDefinitionId == newTaskDefinitionId {
-		return s.startService(ecsService)
+		return s.updateService(newCount)
 	}
 
 	deploymentConfig := s.DeploymentConfig()
@@ -258,7 +266,9 @@ func (s *Service) Up() error {
 		return err
 	}
 
-	err = s.Context().ECSClient.UpdateService(ecsServiceName, newTaskDefinitionId, newCount, deploymentConfig, networkConfig)
+	forceDeployment := s.Context().CLIContext.Bool(flags.ForceDeploymentFlag)
+
+	err = s.Context().ECSClient.UpdateService(ecsServiceName, newTaskDefinitionId, newCount, deploymentConfig, networkConfig, s.healthCheckGP, forceDeployment)
 	if err != nil {
 		return err
 	}
@@ -272,6 +282,9 @@ func (s *Service) Up() error {
 	}
 	if deploymentConfig != nil && deploymentConfig.MinimumHealthyPercent != nil {
 		fields["deployment-min-healthy-percent"] = aws.Int64Value(deploymentConfig.MinimumHealthyPercent)
+	}
+	if s.healthCheckGP != nil {
+		fields["health-check-grace-period"] = *s.healthCheckGP
 	}
 
 	log.WithFields(fields).Info("Updated the ECS service with a new task definition. " +
@@ -355,8 +368,11 @@ func (s *Service) createService() error {
 	if err = entity.ValidateFargateParams(s.Context().ECSParams, launchType); err != nil {
 		return err
 	}
+	if s.healthCheckGP != nil && s.loadBalancer == nil {
+		return fmt.Errorf("--%v is only valid for services configured to use load balancers", flags.HealthCheckGracePeriodFlag)
+	}
 
-	err = s.Context().ECSClient.CreateService(serviceName, taskDefinitionID, s.loadBalancer, s.role, s.DeploymentConfig(), networkConfig, launchType)
+	err = s.Context().ECSClient.CreateService(serviceName, taskDefinitionID, s.loadBalancer, s.role, s.DeploymentConfig(), networkConfig, launchType, s.healthCheckGP)
 	if err != nil {
 		return err
 	}
@@ -383,8 +399,17 @@ func (s *Service) describeService() (*ecs.Service, error) {
 // startService checks if the service has a zero desired count and updates the count to 1 (of each container)
 func (s *Service) startService(ecsService *ecs.Service) error {
 	desiredCount := aws.Int64Value(ecsService.DesiredCount)
+	forceDeployment := s.Context().CLIContext.Bool(flags.ForceDeploymentFlag)
 	if desiredCount != 0 {
 		serviceName := aws.StringValue(ecsService.ServiceName)
+		if forceDeployment {
+			log.WithFields(log.Fields{
+				"serviceName":      serviceName,
+				"desiredCount":     desiredCount,
+				"force-deployment": strconv.FormatBool(forceDeployment),
+			}).Info("Forcing new deployment of running ECS Service")
+			return s.updateService(desiredCount)
+		}
 		//NoOp
 		log.WithFields(log.Fields{
 			"serviceName":  serviceName,
@@ -401,12 +426,13 @@ func (s *Service) updateService(count int64) error {
 	serviceName := entity.GetServiceName(s)
 	deploymentConfig := s.DeploymentConfig()
 	networkConfig, err := composeutils.ConvertToECSNetworkConfiguration(s.projectContext.ECSParams)
+	forceDeployment := s.Context().CLIContext.Bool(flags.ForceDeploymentFlag)
 
 	if err != nil {
 		return err
 	}
 
-	if err = s.Context().ECSClient.UpdateServiceCount(serviceName, count, deploymentConfig, networkConfig); err != nil {
+	if err = s.Context().ECSClient.UpdateService(serviceName, "", count, deploymentConfig, networkConfig, s.healthCheckGP, forceDeployment); err != nil {
 		return err
 	}
 
@@ -419,6 +445,12 @@ func (s *Service) updateService(count int64) error {
 	}
 	if deploymentConfig != nil && deploymentConfig.MinimumHealthyPercent != nil {
 		fields["deployment-min-healthy-percent"] = aws.Int64Value(deploymentConfig.MinimumHealthyPercent)
+	}
+	if s.healthCheckGP != nil {
+		fields["health-check-grace-period"] = *s.healthCheckGP
+	}
+	if forceDeployment {
+		fields["force-deployment"] = forceDeployment
 	}
 
 	log.WithFields(fields).Info("Updated ECS service successfully")

@@ -76,7 +76,7 @@ func startServiceCommand(factory composeFactory.ProjectFactory) cli.Command {
 		Name:         "start",
 		Usage:        "Starts one copy of each of the containers on an existing ECS service by setting the desired count to 1 (only if the current desired count is 0).",
 		Action:       compose.WithProject(factory, compose.ProjectStart, true),
-		Flags:        append(flags.OptionalConfigFlags(), ComposeServiceTimeoutFlag(), flags.OptionalCreateLogsFlag()),
+		Flags:        append(append(flags.OptionalConfigFlags(), ComposeServiceTimeoutFlag(), flags.OptionalCreateLogsFlag()), ForceNewDeploymentFlag()),
 		OnUsageError: flags.UsageErrorFactory("start"),
 	}
 }
@@ -86,7 +86,7 @@ func upServiceCommand(factory composeFactory.ProjectFactory) cli.Command {
 		Name:         "up",
 		Usage:        "Creates a new ECS service or updates an existing one according to your compose file. For new services or existing services with a current desired count of 0, the desired count for the service is set to 1. For existing services with non-zero desired counts, a new task definition is created to reflect any changes to the compose file and the service is updated to use that task definition. In this case, the desired count does not change.",
 		Action:       compose.WithProject(factory, compose.ProjectUp, true),
-		Flags:        append(append(append(deploymentConfigFlags(true), append(loadBalancerFlags(), flags.OptionalConfigFlags()...)...), ComposeServiceTimeoutFlag()), flags.OptionalLaunchTypeFlag(), flags.OptionalCreateLogsFlag(), OptionalServiceConfigsFlag()),
+		Flags:        append(append(append(append(deploymentConfigFlags(true), append(loadBalancerFlags(), flags.OptionalConfigFlags()...)...), ComposeServiceTimeoutFlag()), flags.OptionalLaunchTypeFlag(), flags.OptionalCreateLogsFlag()), OptionalServiceConfigsFlag(), ForceNewDeploymentFlag()),
 		OnUsageError: flags.UsageErrorFactory("up"),
 	}
 }
@@ -158,6 +158,7 @@ func loadBalancerFlags() []cli.Flag {
 	containerPortUsageString := "[Optional] Specifies the port on the container to associate with the load balancer. This port must correspond to a containerPort in the service's task definition. This parameter is required if a load balancer or target group is specified."
 	loadBalancerNameUsageString := "[Optional] Specifies the name of a previously configured Elastic Load Balancing load balancer to associate with your service."
 	roleUsageString := "[Optional] Specifies the name or full Amazon Resource Name (ARN) of the IAM role that allows Amazon ECS to make calls to your load balancer or target group on your behalf. This parameter is required if you are using a load balancer or target group with your service. If you specify the role parameter, you must also specify a load balancer name or target group ARN, along with a container name and container port."
+	healthCheckGracePeriodString := "[Optional] Specifies the period of time, in seconds, that the Amazon ECS service scheduler should ignore unhealthy Elastic Load Balancing target health checks after a task has first started."
 
 	return []cli.Flag{
 		cli.StringFlag{
@@ -180,6 +181,10 @@ func loadBalancerFlags() []cli.Flag {
 			Name:  flags.RoleFlag,
 			Usage: roleUsageString,
 		},
+		cli.StringFlag{
+			Name:  flags.HealthCheckGracePeriodFlag,
+			Usage: healthCheckGracePeriodString,
+		},
 	}
 }
 
@@ -200,5 +205,12 @@ func OptionalServiceConfigsFlag() cli.Flag {
 		Usage: fmt.Sprintf(
 			"[Optional] Specifies services in the compose file. Defaults to all.",
 		),
+        }
+}
+
+func ForceNewDeploymentFlag() cli.Flag {
+	return cli.BoolFlag{
+		Name:  flags.ForceDeploymentFlag,
+		Usage: "[Optional] Whether or not to force a new deployment of the service.",
 	}
 }

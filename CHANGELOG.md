@@ -1,5 +1,28 @@
 # Changelog
 
+## 1.4.2
+* Feature - Update AMI to amzn-ami-2017.09.k-amazon-ecs-optimized
+
+## 1.4.1
+* Bug - Ensure tests pass on go 1.10
+* Enhancement - Support longer resource IDs in Cloudformation template
+
+## 1.4.0
+* Feature - Update AMI to amzn-ami-2017.09.j-amazon-ecs-optimized
+* Feature - Add force-deployment flag to compose service (#144)
+* Feature - Support aws_session token in ECS Profiles (#415)
+* Feature - Add support for us-gov-west-1
+* Bug - Fix YAML parse warnings on networks field (#237)
+* Enhancement - Add issue template
+
+## 1.3.0
+* Feature - Update AMI to amzn-ami-2017.09.g-amazon-ecs-optimized
+* Feature - Add health-check-grace-period flag for compose service up
+* Feature - Add empty flag for cluster up
+
+## 1.2.2
+* Feature - Update AMI to amzn-ami-2017.09.f-amazon-ecs-optimized
+
 ## 1.2.1
 * Feature - Update AMI to amzn-ami-2017.09.e-amazon-ecs-optimized
 

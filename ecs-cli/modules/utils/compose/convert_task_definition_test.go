@@ -39,6 +39,11 @@ const (
 	hostPath       = "./cache"
 )
 
+var defaultNetwork = &yaml.Network{
+	Name:     "default",
+	RealName: "project_default",
+}
+
 func TestConvertToTaskDefinition(t *testing.T) {
 	name := "mysql"
 	cpu := int64(131072) // 128 * 1024
@@ -54,7 +59,6 @@ func TestConvertToTaskDefinition(t *testing.T) {
 	user := "user"
 	workingDir := "/var"
 	taskRoleArn := "arn:aws:iam::123456789012:role/my_role"
-
 	serviceConfig := &config.ServiceConfig{
 		CPUShares:      yaml.StringorInt(cpu),
 		Command:        []string{command},
@@ -63,6 +67,7 @@ func TestConvertToTaskDefinition(t *testing.T) {
 		Links:          links,
 		MemLimit:       yaml.MemStringorInt(int64(1048576) * memory), //1 MiB = 1048576B
 		MemReservation: yaml.MemStringorInt(int64(524288) * memory),
+		Networks:       &yaml.Networks{Networks: []*yaml.Network{defaultNetwork}},
 		Privileged:     privileged,
 		ReadOnly:       readOnly,
 		SecurityOpt:    securityOpts,
@@ -127,7 +132,7 @@ func TestConvertToTaskDefinition(t *testing.T) {
 }
 
 func TestConvertToTaskDefinitionLaunchTypeEmpty(t *testing.T) {
-	serviceConfig := &config.ServiceConfig{}
+	serviceConfig := serviceConfigWithDefaultNetworks()
 
 	taskDefinition := convertToTaskDefinitionInTest(t, "name", serviceConfig, "", "")
 	if len(taskDefinition.RequiresCompatibilities) > 0 {
@@ -136,7 +141,7 @@ func TestConvertToTaskDefinitionLaunchTypeEmpty(t *testing.T) {
 }
 
 func TestConvertToTaskDefinitionLaunchTypeEC2(t *testing.T) {
-	serviceConfig := &config.ServiceConfig{}
+	serviceConfig := serviceConfigWithDefaultNetworks()
 
 	taskDefinition := convertToTaskDefinitionInTest(t, "name", serviceConfig, "", "EC2")
 	if len(taskDefinition.RequiresCompatibilities) != 1 {
@@ -146,7 +151,7 @@ func TestConvertToTaskDefinitionLaunchTypeEC2(t *testing.T) {
 }
 
 func TestConvertToTaskDefinitionLaunchTypeFargate(t *testing.T) {
-	serviceConfig := &config.ServiceConfig{}
+	serviceConfig := serviceConfigWithDefaultNetworks()
 
 	taskDefinition := convertToTaskDefinitionInTest(t, "name", serviceConfig, "", "FARGATE")
 	if len(taskDefinition.RequiresCompatibilities) != 1 {
@@ -178,7 +183,7 @@ task_definition:
 	ecsParams, err := ReadECSParams(ecsParamsFileName)
 	assert.NoError(t, err, "Could not read ECS Params file")
 
-	taskDefinition, err := convertToTaskDefWithEcsParamsInTest(t, []string{"mysql", "wordpress"}, &config.ServiceConfig{}, "", ecsParams)
+	taskDefinition, err := convertToTaskDefWithEcsParamsInTest(t, []string{"mysql", "wordpress"}, serviceConfigWithDefaultNetworks(), "", ecsParams)
 
 	if assert.NoError(t, err) {
 		assert.Equal(t, "host", aws.StringValue(taskDefinition.NetworkMode), "Expected network mode to match")
@@ -221,7 +226,7 @@ task_definition:
 	ecsParams, err := ReadECSParams(ecsParamsFileName)
 	assert.NoError(t, err, "Could not read ECS Params file")
 
-	taskDefinition, err := convertToTaskDefWithEcsParamsInTest(t, []string{"mysql", "wordpress"}, &config.ServiceConfig{}, "", ecsParams)
+	taskDefinition, err := convertToTaskDefWithEcsParamsInTest(t, []string{"mysql", "wordpress"}, serviceConfigWithDefaultNetworks(), "", ecsParams)
 
 	containerDefs := taskDefinition.ContainerDefinitions
 	mysql := findContainerByName("mysql", containerDefs)
@@ -261,7 +266,7 @@ task_definition:
 	ecsParams, err := ReadECSParams(ecsParamsFileName)
 	assert.NoError(t, err, "Could not read ECS Params file")
 
-	taskDefinition, err := convertToTaskDefWithEcsParamsInTest(t, []string{"mysql", "wordpress"}, &config.ServiceConfig{}, "", ecsParams)
+	taskDefinition, err := convertToTaskDefWithEcsParamsInTest(t, []string{"mysql", "wordpress"}, serviceConfigWithDefaultNetworks(), "", ecsParams)
 
 	containerDefs := taskDefinition.ContainerDefinitions
 	mysql := findContainerByName("mysql", containerDefs)
@@ -299,7 +304,7 @@ task_definition:
 	ecsParams, err := ReadECSParams(ecsParamsFileName)
 	assert.NoError(t, err, "Could not read ECS Params file")
 
-	taskDefinition, err := convertToTaskDefWithEcsParamsInTest(t, []string{"mysql", "wordpress"}, &config.ServiceConfig{}, "", ecsParams)
+	taskDefinition, err := convertToTaskDefWithEcsParamsInTest(t, []string{"mysql", "wordpress"}, serviceConfigWithDefaultNetworks(), "", ecsParams)
 
 	containerDefs := taskDefinition.ContainerDefinitions
 	mysql := findContainerByName("mysql", containerDefs)
@@ -337,7 +342,7 @@ task_definition:
 	ecsParams, err := ReadECSParams(ecsParamsFileName)
 	assert.NoError(t, err, "Could not read ECS Params file")
 
-	taskDefinition, err := convertToTaskDefWithEcsParamsInTest(t, []string{"mysql", "wordpress"}, &config.ServiceConfig{}, "", ecsParams)
+	taskDefinition, err := convertToTaskDefWithEcsParamsInTest(t, []string{"mysql", "wordpress"}, serviceConfigWithDefaultNetworks(), "", ecsParams)
 
 	containerDefs := taskDefinition.ContainerDefinitions
 	mysql := findContainerByName("mysql", containerDefs)
@@ -374,7 +379,7 @@ task_definition:
 	ecsParams, err := ReadECSParams(ecsParamsFileName)
 	assert.NoError(t, err, "Could not read ECS Params file")
 
-	taskDefinition, err := convertToTaskDefWithEcsParamsInTest(t, []string{"mysql", "wordpress"}, &config.ServiceConfig{}, "", ecsParams)
+	taskDefinition, err := convertToTaskDefWithEcsParamsInTest(t, []string{"mysql", "wordpress"}, serviceConfigWithDefaultNetworks(), "", ecsParams)
 
 	containerDefs := taskDefinition.ContainerDefinitions
 	mysql := findContainerByName("mysql", containerDefs)
@@ -412,7 +417,7 @@ task_definition:
 	ecsParams, err := ReadECSParams(ecsParamsFileName)
 	assert.NoError(t, err, "Could not read ECS Params file")
 
-	_, err = convertToTaskDefWithEcsParamsInTest(t, []string{"mysql", "wordpress"}, &config.ServiceConfig{}, "", ecsParams)
+	_, err = convertToTaskDefWithEcsParamsInTest(t, []string{"mysql", "wordpress"}, serviceConfigWithDefaultNetworks(), "", ecsParams)
 
 	// At least one container must be marked essential
 	assert.Error(t, err)
@@ -444,7 +449,7 @@ task_definition:
 	ecsParams, err := ReadECSParams(ecsParamsFileName)
 	assert.NoError(t, err, "Could not read ECS Params file")
 
-	_, err = convertToTaskDefWithEcsParamsInTest(t, []string{"mysql", "wordpress"}, &config.ServiceConfig{}, "", ecsParams)
+	_, err = convertToTaskDefWithEcsParamsInTest(t, []string{"mysql", "wordpress"}, serviceConfigWithDefaultNetworks(), "", ecsParams)
 
 	// At least one container must be marked essential
 	assert.Error(t, err)
@@ -475,7 +480,7 @@ task_definition:
 
 	taskRoleArn := "arn:aws:iam::123456789012:role/tweedledum"
 
-	taskDefinition, err := convertToTaskDefWithEcsParamsInTest(t, []string{"mysql", "wordpress"}, &config.ServiceConfig{}, taskRoleArn, ecsParams)
+	taskDefinition, err := convertToTaskDefWithEcsParamsInTest(t, []string{"mysql", "wordpress"}, serviceConfigWithDefaultNetworks(), taskRoleArn, ecsParams)
 
 	if assert.NoError(t, err) {
 		assert.Equal(t, "host", aws.StringValue(taskDefinition.NetworkMode), "Expected network mode to match")
@@ -507,7 +512,7 @@ task_definition:
 	ecsParams, err := ReadECSParams(ecsParamsFileName)
 	assert.NoError(t, err, "Could not read ECS Params file")
 
-	taskDefinition, err := convertToTaskDefWithEcsParamsInTest(t, []string{"mysql", "wordpress"}, &config.ServiceConfig{}, "", ecsParams)
+	taskDefinition, err := convertToTaskDefWithEcsParamsInTest(t, []string{"mysql", "wordpress"}, serviceConfigWithDefaultNetworks(), "", ecsParams)
 
 	if assert.NoError(t, err) {
 		assert.Equal(t, "200", aws.StringValue(taskDefinition.Cpu), "Expected CPU to match")
@@ -519,7 +524,10 @@ task_definition:
 func TestConvertToTaskDefinitionWithDnsSearch(t *testing.T) {
 	dnsSearchDomains := []string{"search.example.com"}
 
-	serviceConfig := &config.ServiceConfig{DNSSearch: dnsSearchDomains}
+	serviceConfig := &config.ServiceConfig{
+		DNSSearch: dnsSearchDomains,
+		Networks:  &yaml.Networks{Networks: []*yaml.Network{defaultNetwork}},
+	}
 
 	taskDefinition := convertToTaskDefinitionInTest(t, "name", serviceConfig, "", "")
 	containerDef := *taskDefinition.ContainerDefinitions[0]
@@ -532,7 +540,10 @@ func TestConvertToTaskDefinitionWithDnsSearch(t *testing.T) {
 func TestConvertToTaskDefinitionWithDnsServers(t *testing.T) {
 	dnsServer := "1.2.3.4"
 
-	serviceConfig := &config.ServiceConfig{DNS: []string{dnsServer}}
+	serviceConfig := &config.ServiceConfig{
+		DNS:      []string{dnsServer},
+		Networks: &yaml.Networks{Networks: []*yaml.Network{defaultNetwork}},
+	}
 
 	taskDefinition := convertToTaskDefinitionInTest(t, "name", serviceConfig, "", "")
 	containerDef := *taskDefinition.ContainerDefinitions[0]
@@ -547,7 +558,10 @@ func TestConvertToTaskDefinitionWithDockerLabels(t *testing.T) {
 		"com.foo.label2": "value",
 	}
 
-	serviceConfig := &config.ServiceConfig{Labels: dockerLabels}
+	serviceConfig := &config.ServiceConfig{
+		Labels:   dockerLabels,
+		Networks: &yaml.Networks{Networks: []*yaml.Network{defaultNetwork}},
+	}
 
 	taskDefinition := convertToTaskDefinitionInTest(t, "name", serviceConfig, "", "")
 	containerDef := *taskDefinition.ContainerDefinitions[0]
@@ -562,6 +576,7 @@ func TestConvertToTaskDefinitionWithEnv(t *testing.T) {
 	env := envKey + "=" + envValue
 	serviceConfig := &config.ServiceConfig{
 		Environment: []string{env},
+		Networks:    &yaml.Networks{Networks: []*yaml.Network{defaultNetwork}},
 	}
 
 	taskDefinition := convertToTaskDefinitionInTest(t, "name", serviceConfig, "", "")
@@ -581,6 +596,7 @@ func TestConvertToTaskDefinitionWithEnvFromShell(t *testing.T) {
 
 	serviceConfig := &config.ServiceConfig{
 		Environment: []string{envKey1, envKey2 + "="},
+		Networks:    &yaml.Networks{Networks: []*yaml.Network{defaultNetwork}},
 	}
 
 	os.Setenv(envKey1, envValue1)
@@ -608,7 +624,10 @@ func TestConvertToTaskDefinitionWithEnvFromShell(t *testing.T) {
 }
 
 func TestConvertToTaskDefinitionWithPortMappings(t *testing.T) {
-	serviceConfig := &config.ServiceConfig{Ports: []string{portMapping}}
+	serviceConfig := &config.ServiceConfig{
+		Ports:    []string{portMapping},
+		Networks: &yaml.Networks{Networks: []*yaml.Network{defaultNetwork}},
+	}
 
 	taskDefinition := convertToTaskDefinitionInTest(t, "name", serviceConfig, "", "")
 	containerDef := *taskDefinition.ContainerDefinitions[0]
@@ -632,7 +651,10 @@ func TestConvertToTaskDefinitionWithVolumesFrom(t *testing.T) {
 }
 
 func setupAndTestVolumesFrom(t *testing.T, volume, sourceContainer string, readOnly bool) {
-	serviceConfig := &config.ServiceConfig{VolumesFrom: []string{volume}}
+	serviceConfig := &config.ServiceConfig{
+		VolumesFrom: []string{volume},
+		Networks:    &yaml.Networks{Networks: []*yaml.Network{defaultNetwork}},
+	}
 	taskDefinition := convertToTaskDefinitionInTest(t, "name", serviceConfig, "", "")
 	containerDef := *taskDefinition.ContainerDefinitions[0]
 	verifyVolumeFrom(t, containerDef.VolumesFrom[0], sourceContainer, readOnly)
@@ -643,7 +665,10 @@ func TestConvertToTaskDefinitionWithExtraHosts(t *testing.T) {
 	ipAddress := "127.10.10.10"
 
 	extraHost := hostname + ":" + ipAddress
-	serviceConfig := &config.ServiceConfig{ExtraHosts: []string{extraHost}}
+	serviceConfig := &config.ServiceConfig{
+		ExtraHosts: []string{extraHost},
+		Networks:   &yaml.Networks{Networks: []*yaml.Network{defaultNetwork}},
+	}
 
 	taskDefinition := convertToTaskDefinitionInTest(t, "name", serviceConfig, "", "")
 	containerDef := *taskDefinition.ContainerDefinitions[0]
@@ -651,7 +676,7 @@ func TestConvertToTaskDefinitionWithExtraHosts(t *testing.T) {
 }
 
 func TestConvertToTaskDefinitionWithLogConfiguration(t *testing.T) {
-	taskDefinition := convertToTaskDefinitionInTest(t, "name", &config.ServiceConfig{}, "", "")
+	taskDefinition := convertToTaskDefinitionInTest(t, "name", serviceConfigWithDefaultNetworks(), "", "")
 	containerDef := *taskDefinition.ContainerDefinitions[0]
 
 	if containerDef.LogConfiguration != nil {
@@ -668,6 +693,7 @@ func TestConvertToTaskDefinitionWithLogConfiguration(t *testing.T) {
 			Driver:  logDriver,
 			Options: logOpts,
 		},
+		Networks: &yaml.Networks{Networks: []*yaml.Network{defaultNetwork}},
 	}
 
 	taskDefinition = convertToTaskDefinitionInTest(t, "name", serviceConfig, "", "")
@@ -685,7 +711,8 @@ func TestConvertToTaskDefinitionWithUlimits(t *testing.T) {
 	typeName := "nofile"
 	basicType := yaml.NewUlimit(typeName, softLimit, softLimit) // "nofile=1024"
 	serviceConfig := &config.ServiceConfig{
-		Ulimits: yaml.Ulimits{Elements: []yaml.Ulimit{basicType}},
+		Ulimits:  yaml.Ulimits{Elements: []yaml.Ulimit{basicType}},
+		Networks: &yaml.Networks{Networks: []*yaml.Network{defaultNetwork}},
 	}
 
 	taskDefinition := convertToTaskDefinitionInTest(t, "name", serviceConfig, "", "")
@@ -700,6 +727,7 @@ func TestConvertToTaskDefinitionWithVolumes(t *testing.T) {
 	serviceConfig := &config.ServiceConfig{
 		Volumes:     &yaml.Volumes{Volumes: []*yaml.Volume{&volume}},
 		VolumesFrom: volumesFrom,
+		Networks:    &yaml.Networks{Networks: []*yaml.Network{defaultNetwork}},
 	}
 
 	taskDefinition := convertToTaskDefinitionInTest(t, "name", serviceConfig, "", "")
@@ -940,6 +968,12 @@ func convertToTaskDefinitionInTest(t *testing.T, name string, serviceConfig *con
 	return taskDefinition
 }
 
+func serviceConfigWithDefaultNetworks() *config.ServiceConfig {
+	return &config.ServiceConfig{
+		Networks: &yaml.Networks{Networks: []*yaml.Network{defaultNetwork}},
+	}
+}
+
 func convertToTaskDefWithEcsParamsInTest(t *testing.T, names []string, serviceConfig *config.ServiceConfig, taskRoleArn string, ecsParams *ECSParams) (*ecs.TaskDefinition, error) {
 	serviceConfigs := config.NewServiceConfigs()
 	for _, name := range names {
@@ -1064,6 +1098,7 @@ func TestMemReservationHigherThanMemLimit(t *testing.T) {
 		ReadOnly:       readOnly,
 		User:           user,
 		WorkingDir:     workingDir,
+		Networks:       &yaml.Networks{Networks: []*yaml.Network{defaultNetwork}},
 	}
 
 	serviceConfigs := config.NewServiceConfigs()

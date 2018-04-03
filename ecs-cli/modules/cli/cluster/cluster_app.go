@@ -21,7 +21,7 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/Sirupsen/logrus"
+	"github.com/sirupsen/logrus"
 	"github.com/aws/amazon-ecs-cli/ecs-cli/modules/cli/compose/container"
 	composecontext "github.com/aws/amazon-ecs-cli/ecs-cli/modules/cli/compose/context"
 	"github.com/aws/amazon-ecs-cli/ecs-cli/modules/cli/compose/entity/task"
@@ -73,25 +73,26 @@ func ClusterUp(c *cli.Context) {
 
 	ecsClient := ecsclient.NewECSClient()
 	cfnClient := cloudformation.NewCloudformationClient()
-	amiIds := ami.NewStaticAmiIds()
 
 	cliParams, err := newCliParams(c, rdwr)
 	if err != nil {
 		logrus.Fatal("Error executing 'up': ", err)
 	}
 
-	err = createCluster(c, rdwr, ecsClient, cfnClient, amiIds, cliParams)
+	err = createCluster(c, ecsClient, cfnClient, cliParams)
 	if err != nil {
 		logrus.Fatal("Error executing 'up': ", err)
 	}
 
-	fmt.Println("Cluster creation succeeded.")
-
-	// Displays resources create by CloudFormation, as a convenience for tasks launched
-	// with Task Networking or in Fargate mode.
-	if err := cfnClient.DescribeNetworkResources(cliParams.CFNStackName); err != nil {
-		logrus.Error("Error describing Cloudformation resources: ", err)
+	if !c.Bool(flags.EmptyFlag) {
+		// Displays resources create by CloudFormation, as a convenience for tasks launched
+		// with Task Networking or in Fargate mode.
+		if err := cfnClient.DescribeNetworkResources(cliParams.CFNStackName); err != nil {
+			logrus.Error("Error describing Cloudformation resources: ", err)
+		}
 	}
+
+	fmt.Println("Cluster creation succeeded.")
 }
 
 func ClusterDown(c *cli.Context) {
@@ -167,8 +168,16 @@ func validateCommaSeparatedParam(cfnParams *cloudformation.CfnStackParams, param
 	return false
 }
 
-func createCluster(context *cli.Context, rdwr config.ReadWriter, ecsClient ecsclient.ECSClient, cfnClient cloudformation.CloudformationClient, amiIds ami.ECSAmiIds, cliParams *config.CLIParams) error {
+func createCluster(context *cli.Context, ecsClient ecsclient.ECSClient, cfnClient cloudformation.CloudformationClient, cliParams *config.CLIParams) error {
 	var err error
+
+	if context.Bool(flags.EmptyFlag) {
+		err = createEmptyCluster(context, ecsClient, cfnClient, cliParams)
+		if err != nil {
+			return err
+		}
+		return nil
+	}
 
 	launchType := cliParams.LaunchType
 	if launchType == "" {
@@ -245,6 +254,7 @@ func createCluster(context *cli.Context, rdwr config.ReadWriter, ecsClient ecscl
 	}
 
 	// Check if image id was supplied, else populate
+	amiIds := ami.NewStaticAmiIds()
 	_, err = cfnParams.GetParameter(cloudformation.ParameterKeyAmiId)
 	if err == cloudformation.ParameterNotFoundError {
 		amiId, err := amiIds.Get(aws.StringValue(cliParams.Session.Config.Region))
@@ -303,6 +313,53 @@ var newCliParams = func(context *cli.Context, rdwr config.ReadWriter) (*config.C
 	return config.NewCLIParams(context, rdwr)
 }
 
+func createEmptyCluster(context *cli.Context, ecsClient ecsclient.ECSClient, cfnClient cloudformation.CloudformationClient, cliParams *config.CLIParams) error {
+	for _, flag := range flags.CFNResourceFlags() {
+		if context.String(flag) != "" {
+			logrus.Warnf("Value for flag '%v' will be ignored when creating an empty cluster", flag)
+		}
+	}
+	if isIAMAcknowledged(context) {
+		logrus.Warnf("The '--%v' flag will be ignored when creating an empty cluster", flags.CapabilityIAMFlag)
+	}
+
+	if isForceSet(context) {
+		logrus.Warn("Force flag is unsupported when creating an empty cluster.")
+	}
+
+	if cliParams.Cluster == "" {
+		return fmt.Errorf("Please configure a cluster using the configure command or the '--%s' flag", flags.ClusterFlag)
+	}
+
+	// Check if non-empty cluster with same name already exists
+	cfnClient.Initialize(cliParams)
+	stackName := cliParams.CFNStackName
+	if err := cfnClient.ValidateStackExists(stackName); err == nil {
+		return fmt.Errorf("A CloudFormation stack already exists for the cluster '%s'.", cliParams.Cluster)
+	}
+
+	ecsClient.Initialize(cliParams)
+	if _, err := ecsClient.CreateCluster(cliParams.Cluster); err != nil {
+		return err
+	}
+
+	return nil
+}
+
+var deleteCFNStack = func(cfnClient cloudformation.CloudformationClient, cliParams *config.CLIParams) error {
+	stackName := cliParams.CFNStackName
+	if err := cfnClient.DeleteStack(stackName); err != nil {
+		return err
+	}
+
+	logrus.Info("Waiting for your cluster resources to be deleted...")
+	if err := cfnClient.WaitUntilDeleteComplete(stackName); err != nil {
+		return err
+	}
+
+	return nil
+}
+
 func deleteCluster(context *cli.Context, rdwr config.ReadWriter, ecsClient ecsclient.ECSClient, cfnClient cloudformation.CloudformationClient) error {
 	// Validate cli flags
 	if !isForceSet(context) {
@@ -311,6 +368,7 @@ func deleteCluster(context *cli.Context, rdwr config.ReadWriter, ecsClient ecscl
 			return err
 		}
 	}
+
 	cliParams, err := newCliParams(context, rdwr)
 	if err != nil {
 		return err
@@ -325,17 +383,13 @@ func deleteCluster(context *cli.Context, rdwr config.ReadWriter, ecsClient ecscl
 	// Validate that a cfn stack exists for the cluster
 	cfnClient.Initialize(cliParams)
 	stackName := cliParams.CFNStackName
-	if err := cfnClient.ValidateStackExists(stackName); err != nil {
-		return fmt.Errorf("CloudFormation stack not found for cluster '%s'", cliParams.Cluster)
-	}
 
-	// Delete cfn stack
-	if err := cfnClient.DeleteStack(stackName); err != nil {
-		return err
-	}
-	logrus.Info("Waiting for your cluster resources to be deleted...")
-	if err := cfnClient.WaitUntilDeleteComplete(stackName); err != nil {
-		return err
+	if err := cfnClient.ValidateStackExists(stackName); err != nil {
+		logrus.Infof("No CloudFormation stack found for cluster '%s'.", cliParams.Cluster)
+	} else {
+		if err := deleteCFNStack(cfnClient, cliParams); err != nil {
+			return err
+		}
 	}
 
 	// Delete cluster in ECS

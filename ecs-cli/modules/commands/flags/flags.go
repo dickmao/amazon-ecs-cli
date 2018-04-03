@@ -17,7 +17,7 @@ import (
 	"fmt"
 	"os"
 
-	"github.com/Sirupsen/logrus"
+	"github.com/sirupsen/logrus"
 	"github.com/urfave/cli"
 )
 
@@ -26,6 +26,7 @@ const (
 	// Configure
 	AccessKeyFlag           = "access-key"
 	SecretKeyFlag           = "secret-key"
+	SessionTokenFlag        = "session-token"
 	RegionFlag              = "region"
 	AwsRegionEnvVar         = "AWS_REGION"
 	AwsDefaultRegionEnvVar  = "AWS_DEFAULT_REGION"
@@ -83,6 +84,7 @@ const (
 	ForceFlag                       = "force"
 	CustomTemplateFlag              = "template"
 	DisableRollbackFlag             = "disable-rollback"
+	EmptyFlag                       = "empty"
 
 	// Image
 	RegistryIdFlag = "registry-id"
@@ -105,9 +107,11 @@ const (
 	ContainerNameFlag                       = "container-name"
 	ContainerPortFlag                       = "container-port"
 	LoadBalancerNameFlag                    = "load-balancer-name"
+	HealthCheckGracePeriodFlag              = "health-check-grace-period"
 	RoleFlag                                = "role"
 	ComposeServiceTimeOutFlag               = "timeout"
 	ServiceConfigsFlag                      = "service-configs"
+	ForceDeploymentFlag                     = "force-deployment"
 )
 
 // OptionalRegionAndProfileFlags provides these flags:
@@ -193,5 +197,21 @@ func UsageErrorFactory(command string) func(*cli.Context, error, bool) error {
 		}
 		os.Exit(1)
 		return err
+	}
+}
+
+func CFNResourceFlags() []string {
+	return []string{
+		AsgMaxSizeFlag,
+		VpcAzFlag,
+		SecurityGroupFlag,
+		SourceCidrFlag,
+		EcsPortFlag,
+		SubnetIdsFlag,
+		VpcIdFlag,
+		InstanceTypeFlag,
+		InstanceRoleFlag,
+		ImageIdFlag,
+		KeypairNameFlag,
 	}
 }

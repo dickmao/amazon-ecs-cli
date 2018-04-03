@@ -17,7 +17,7 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/Sirupsen/logrus"
+	"github.com/sirupsen/logrus"
 	cwlogsclient "github.com/aws/amazon-ecs-cli/ecs-cli/modules/clients/aws/cloudwatchlogs"
 	ecsclient "github.com/aws/amazon-ecs-cli/ecs-cli/modules/clients/aws/ecs"
 	"github.com/aws/amazon-ecs-cli/ecs-cli/modules/commands/flags"
@@ -88,7 +88,7 @@ func logsRequest(context *cli.Context, ecsClient ecsclient.ECSClient, params *co
 
 	taskDef, err := ecsClient.DescribeTaskDefinition(taskDefIdentifier)
 	if err != nil {
-		return nil, "", errors.Wrap(err, fmt.Sprintf("Failed to Describe TaskDefinition; try using --%s to specify the Task Defintion.", flags.TaskDefinitionFlag))
+		return nil, "", errors.Wrap(err, fmt.Sprintf("Failed to Describe TaskDefinition; try using --%s to specify the Task Definition.", flags.TaskDefinitionFlag))
 	}
 
 	containerName := context.String(flags.ContainerNameFlag)

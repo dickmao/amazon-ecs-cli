@@ -19,7 +19,7 @@ import (
 	"os"
 	"path/filepath"
 
-	"github.com/Sirupsen/logrus"
+	"github.com/sirupsen/logrus"
 	"github.com/pkg/errors"
 
 	yaml "gopkg.in/yaml.v2"
@@ -40,7 +40,7 @@ type ReadWriter interface {
 	Get(string, string) (*CLIConfig, error)
 }
 
-// YAMLReadWriter implments the ReadWriter interfaces. It can be used to save and load
+// YAMLReadWriter implements the ReadWriter interfaces. It can be used to save and load
 // ecs-cli config. Sample ecs-cli config:
 // cluster: test
 // aws_profile:
@@ -158,6 +158,7 @@ func readProfileConfig(path string, profileConfigKey string, cliConfig *CLIConfi
 	// Get the info out of the cluster
 	cliConfig.AWSSecretKey = profile.AWSSecretKey
 	cliConfig.AWSAccessKey = profile.AWSAccessKey
+	cliConfig.AWSSessionToken = profile.AWSSessionToken
 	cliConfig.Version = yamlConfigVersion
 
 	return nil
@@ -172,7 +173,7 @@ func (rdwr *YAMLReadWriter) Get(clusterConfig string, profileConfig string) (*CL
 	profilePath := credentialsFilePath(rdwr.destination)
 	configPath := ConfigFilePath(rdwr.destination)
 
-	// try to readINI first; it is either sucessful or it
+	// try to readINI first; it is either successful or it
 	// set cliConfig to be its default value (all fields empty strings)
 	readINI(rdwr.destination, cliConfig)
 

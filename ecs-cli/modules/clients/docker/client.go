@@ -14,14 +14,14 @@
 package docker
 
 import (
-	log "github.com/Sirupsen/logrus"
+	log "github.com/sirupsen/logrus"
 	"github.com/aws/amazon-ecs-cli/ecs-cli/modules/clients/docker/dockeriface"
 	"github.com/fsouza/go-dockerclient"
 	"github.com/pkg/errors"
 )
 
 const (
-	DockerVersion_1_17 = "1.17"
+	DockerVersion1_17 = "1.17"
 )
 
 // Client is an interface specifying the subset of
@@ -39,7 +39,7 @@ type dockerClient struct {
 // NewClient creates a new docker client
 // TODO create interface for docker.NewVersionedClientFromEnv for testing
 func NewClient() (Client, error) {
-	client, err := docker.NewVersionedClientFromEnv(string(DockerVersion_1_17))
+	client, err := docker.NewVersionedClientFromEnv(string(DockerVersion1_17))
 	if err != nil {
 		return nil, errors.Wrap(err, "failed to create docker client")
 	}

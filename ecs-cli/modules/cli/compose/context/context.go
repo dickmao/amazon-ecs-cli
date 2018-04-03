@@ -20,7 +20,7 @@ import (
 	"path/filepath"
 	"strings"
 
-	"github.com/Sirupsen/logrus"
+	"github.com/sirupsen/logrus"
 	ec2client "github.com/aws/amazon-ecs-cli/ecs-cli/modules/clients/aws/ec2"
 	ecsclient "github.com/aws/amazon-ecs-cli/ecs-cli/modules/clients/aws/ecs"
 	"github.com/aws/amazon-ecs-cli/ecs-cli/modules/commands/flags"
@@ -85,10 +85,10 @@ func (context *Context) SetProjectName() error {
 // This following is derived from Docker's Libcompose project, Copyright 2015 Docker, Inc.
 // The original code may be found :
 // https://github.com/docker/libcompose/blob/master/project/context.go
-func (c *Context) lookupProjectName() (string, error) {
+func (context *Context) lookupProjectName() (string, error) {
 	file := "."
-	if len(c.ComposeFiles) > 0 {
-		file = c.ComposeFiles[0]
+	if len(context.ComposeFiles) > 0 {
+		file = context.ComposeFiles[0]
 	}
 
 	f, err := filepath.Abs(file)
