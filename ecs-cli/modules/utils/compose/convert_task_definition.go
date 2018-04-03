@@ -21,13 +21,13 @@ import (
 	"strconv"
 	"strings"
 
-	log "github.com/sirupsen/logrus"
 	"github.com/aws/aws-sdk-go/aws"
 	"github.com/aws/aws-sdk-go/service/ecs"
 	"github.com/docker/libcompose/config"
 	"github.com/docker/libcompose/project"
 	"github.com/docker/libcompose/yaml"
 	"github.com/pkg/errors"
+	log "github.com/sirupsen/logrus"
 )
 
 const (
@@ -70,8 +70,8 @@ type TaskDefParams struct {
 	memory              string
 	containerDefs       ContainerDefs
 	executionRoleArn    string
-        placementExpression string
-        placementType       string
+	placementExpression string
+	placementType       string
 }
 
 // ConvertToTaskDefinition transforms the yaml configs to its ecs equivalent (task definition)
@@ -137,14 +137,14 @@ func ConvertToTaskDefinition(taskDefinitionName string, context *project.Context
 	// the ecs-params.yml file, we want to make sure that there is still at
 	// least one essential container, i.e. that the customer does not
 	// explicitly set all containers to be non-essential.
-	// for i, v := range containerDefinitions {
-	// 	if *v.Essential {
-	// 		break
-	// 	}
-	// 	if i == len(containerDefinitions)-1 {
-	// 		return nil, errors.New("Task definition does not have any essential containers.")
-	// 	}
-	// }
+	for i, v := range containerDefinitions {
+		if *v.Essential {
+			break
+		}
+		if i == len(containerDefinitions)-1 {
+			return nil, errors.New("Task definition does not have any essential containers.")
+		}
+	}
 
 	taskDefinition := &ecs.TaskDefinition{
 		Family:               aws.String(taskDefinitionName),
