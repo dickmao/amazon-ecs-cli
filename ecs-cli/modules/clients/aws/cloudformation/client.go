@@ -132,7 +132,7 @@ func (c *cloudformationClient) CreateStack(template string, stackName string, di
 		DisableRollback: aws.Bool(disableRollback),
 		Parameters:      params.Get(),
 	}
-	if _, err := url.ParseRequestURI(template); err != nil {
+	if _, err := url.ParseRequestURI(template); err == nil {
 		input = cloudformation.CreateStackInput{
 			TemplateURL:     aws.String(template),
 			Capabilities:    aws.StringSlice([]string{cloudformation.CapabilityCapabilityIam}),
