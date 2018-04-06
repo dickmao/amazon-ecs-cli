@@ -15,10 +15,10 @@ package cloudformation
 
 import (
 	"fmt"
+	"net/url"
 	"strings"
 	"time"
 
-	log "github.com/sirupsen/logrus"
 	"github.com/aws/amazon-ecs-cli/ecs-cli/modules/clients"
 	"github.com/aws/amazon-ecs-cli/ecs-cli/modules/config"
 	"github.com/aws/amazon-ecs-cli/ecs-cli/modules/utils"
@@ -26,6 +26,7 @@ import (
 	"github.com/aws/aws-sdk-go/aws/awserr"
 	"github.com/aws/aws-sdk-go/service/cloudformation"
 	"github.com/aws/aws-sdk-go/service/cloudformation/cloudformationiface"
+	log "github.com/sirupsen/logrus"
 )
 
 const (
@@ -130,6 +131,15 @@ func (c *cloudformationClient) CreateStack(template string, stackName string, di
 		StackName:       aws.String(stackName),
 		DisableRollback: aws.Bool(disableRollback),
 		Parameters:      params.Get(),
+	}
+	if _, err := url.ParseRequestURI(template); err != nil {
+		input = cloudformation.CreateStackInput{
+			TemplateURL:     aws.String(template),
+			Capabilities:    aws.StringSlice([]string{cloudformation.CapabilityCapabilityIam}),
+			StackName:       aws.String(stackName),
+			DisableRollback: aws.Bool(disableRollback),
+			Parameters:      params.Get(),
+		}
 	}
 	// input.SetOnFailure(cloudformation.OnFailureDoNothing)
 
