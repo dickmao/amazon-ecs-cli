@@ -17,11 +17,11 @@ import (
 	"bufio"
 	"fmt"
 	"io/ioutil"
+	"net/url"
 	"os"
 	"strconv"
 	"strings"
 
-	"github.com/sirupsen/logrus"
 	"github.com/aws/amazon-ecs-cli/ecs-cli/modules/cli/compose/container"
 	composecontext "github.com/aws/amazon-ecs-cli/ecs-cli/modules/cli/compose/context"
 	"github.com/aws/amazon-ecs-cli/ecs-cli/modules/cli/compose/entity/task"
@@ -33,6 +33,7 @@ import (
 	"github.com/aws/amazon-ecs-cli/ecs-cli/modules/config/ami"
 	"github.com/aws/aws-sdk-go/aws"
 	"github.com/docker/libcompose/project"
+	"github.com/sirupsen/logrus"
 	"github.com/urfave/cli"
 )
 
@@ -287,14 +288,15 @@ func createCluster(context *cli.Context, ecsClient ecsclient.ECSClient, cfnClien
 	}
 
 	// Create cfn stack
-	var template string
-	customTemplate := context.String(flags.CustomTemplateFlag)
-	if customTemplate != "" {
-		bytes, err := ioutil.ReadFile(customTemplate)
-		if err != nil {
-			return err
+	template := context.String(flags.CustomTemplateFlag)
+	if template != "" {
+		if _, err := url.ParseRequestURI(template); err != nil {
+			bytes, err := ioutil.ReadFile(template)
+			if err != nil {
+				return err
+			}
+			template = string(bytes)
 		}
-		template = string(bytes)
 	} else {
 		template = cloudformation.GetTemplate()
 	}
