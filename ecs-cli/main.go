@@ -16,7 +16,6 @@ package main
 import (
 	"os"
 
-	"github.com/sirupsen/logrus"
 	ecscompose "github.com/aws/amazon-ecs-cli/ecs-cli/modules/cli/compose/factory"
 	"github.com/aws/amazon-ecs-cli/ecs-cli/modules/commands/cluster"
 	"github.com/aws/amazon-ecs-cli/ecs-cli/modules/commands/compose"
@@ -27,6 +26,7 @@ import (
 	"github.com/aws/amazon-ecs-cli/ecs-cli/modules/utils/logger"
 	"github.com/aws/amazon-ecs-cli/ecs-cli/modules/version"
 	"github.com/cihub/seelog"
+	"github.com/sirupsen/logrus"
 	"github.com/urfave/cli"
 )
 
@@ -47,6 +47,7 @@ func main() {
 		configureCommand.ConfigureCommand(),
 		clusterCommand.UpCommand(),
 		clusterCommand.TemplateUpCommand(),
+		clusterCommand.TemplateUpdateCommand(),
 		clusterCommand.DownCommand(),
 		clusterCommand.ScaleCommand(),
 		clusterCommand.PsCommand(),

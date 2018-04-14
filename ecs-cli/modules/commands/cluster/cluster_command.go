@@ -34,11 +34,22 @@ func UpCommand() cli.Command {
 func TemplateUpCommand() cli.Command {
 	return cli.Command{
 		Name:         "template",
-		Usage:        "Follow this cluster creating template.",
+		Usage:        "Follow this stack creating template.",
 		Before:       ecscli.BeforeApp,
 		Action:       cluster.TemplateUp,
 		Flags:        append(templateUpFlags(), append(clusterUpFlags(), flags.OptionalConfigFlags()...)...),
 		OnUsageError: flags.UsageErrorFactory("template"),
+	}
+}
+
+func TemplateUpdateCommand() cli.Command {
+	return cli.Command{
+		Name:         "template-update",
+		Usage:        "Update existing stack with new template.",
+		Before:       ecscli.BeforeApp,
+		Action:       cluster.ClusterUpdate,
+		Flags:        append(templateUpFlags(), append(clusterUpFlags(), flags.OptionalConfigFlags()...)...),
+		OnUsageError: flags.UsageErrorFactory("template-update"),
 	}
 }
 
@@ -165,6 +176,10 @@ func clusterUpFlags() []cli.Flag {
 		cli.BoolFlag{
 			Name:  flags.DisableRollbackFlag,
 			Usage: "[Optional] Disable rollback on stack create failure.",
+		},
+		cli.StringFlag{
+			Name:  flags.HostedZoneFlag,
+			Usage: "[Optional] Use this hosted zone.",
 		},
 		flags.OptionalLaunchTypeFlag(),
 	}

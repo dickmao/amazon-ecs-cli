@@ -84,6 +84,7 @@ const (
 	ForceFlag                       = "force"
 	CustomTemplateFlag              = "template"
 	DisableRollbackFlag             = "disable-rollback"
+	HostedZoneFlag                  = "hostedzone"
 	EmptyFlag                       = "empty"
 
 	// Image

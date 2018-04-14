@@ -38,6 +38,7 @@ const (
 	ParameterKeyInstanceRole             = "InstanceRole"
 	ParameterKeyIsFargate                = "IsFargate"
 	ParameterKeyDefaultTargetGroupName   = "DefaultTargetGroupName"
+	ParameterKeyHostedZone               = "HostedZone"
 )
 
 var ParameterNotFoundError = errors.New("Parameter not found")
@@ -73,6 +74,7 @@ func init() {
 		ParameterKeyAmiId,
 		ParameterKeyAssociatePublicIPAddress,
 		ParameterKeyDefaultTargetGroupName,
+		ParameterKeyHostedZone,
 	}
 }
 
