@@ -236,8 +236,8 @@ func (s *Service) Up() error {
 			return err
 		}
 		err = waitForServiceDescribable(s)
-		if err != nil {
-			return err
+		if err == nil {
+			return fmt.Errorf("bad test!")
 		}
 		return s.Start()
 	}
