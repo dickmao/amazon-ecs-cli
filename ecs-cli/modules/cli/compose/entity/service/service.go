@@ -236,8 +236,8 @@ func (s *Service) Up() error {
 			return err
 		}
 		err = waitForServiceDescribable(s)
-		if err == nil {
-			return fmt.Errorf("bad test!")
+		if err != nil {
+			return err
 		}
 		return s.Start()
 	}
@@ -382,6 +382,10 @@ func (s *Service) createService() error {
 	if err != nil {
 		return err
 	}
+	fields := log.Fields{
+		"serviceName": serviceName,
+	}
+	log.WithFields(fields).Info("Created ECS service")
 	return nil
 }
 
