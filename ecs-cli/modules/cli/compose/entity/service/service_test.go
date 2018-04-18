@@ -604,33 +604,6 @@ type UpdateServiceParams struct {
 	networkConfig          *ecs.NetworkConfiguration
 	healthCheckGracePeriod *int64
 	forceDeployment        bool
-	timeout                int64
-}
-
-func TestUpdateExistingServiceWithTimeoutFlag(t *testing.T) {
-	timeoutFlagValue := 1
-
-	flagSet := flag.NewFlagSet("ecs-cli-up", 0)
-	flagSet.String(flags.ComposeServiceTimeOutFlag, strconv.Itoa(timeoutFlagValue), "")
-	cliContext := cli.NewContext(nil, flagSet, nil)
-
-	// define existing service
-	serviceName := "test-service"
-	existingService := &ecs.Service{
-		TaskDefinition: aws.String("arn/test-task-def"),
-		Status:         aws.String("ACTIVE"),
-		DesiredCount:   aws.Int64(0),
-		ServiceName:    aws.String(serviceName),
-	}
-
-	// define expected client input given the above info
-	expectedInput := getDefaultUpdateInput()
-	expectedInput.serviceName = serviceName
-	expectedInput.timeout = *aws.Int64(int64(timeoutFlagValue))
-
-	// call tests
-	upServiceWithCurrentTaskDefTest(t, cliContext, &config.CLIParams{}, &utils.ECSParams{}, expectedInput, existingService)
-	upServiceWithNewTaskDefTest(t, cliContext, &config.CLIParams{}, &utils.ECSParams{}, expectedInput, existingService)
 }
 
 func TestUpdateExistingServiceWithForceFlag(t *testing.T) {
@@ -776,8 +749,7 @@ func getUpdateServiceMockClient(t *testing.T,
 			gomock.Any(), // networkConfig
 			gomock.Any(), // healthCheckGracePeriod
 			gomock.Any(), // force
-			gomock.Any(), // timeout
-		).Do(func(a, b, c, d, e, f, g, h interface{}) {
+		).Do(func(a, b, c, d, e, f, g interface{}) {
 			// validate the client is called with the expected inputs
 			observedInput := UpdateServiceParams{
 				serviceName:            a.(string),
@@ -787,7 +759,6 @@ func getUpdateServiceMockClient(t *testing.T,
 				networkConfig:          e.(*ecs.NetworkConfiguration),
 				healthCheckGracePeriod: f.(*int64),
 				forceDeployment:        g.(bool),
-				timeout:                h.(int64),
 			}
 			assert.Equal(t, expectedInput, observedInput)
 
