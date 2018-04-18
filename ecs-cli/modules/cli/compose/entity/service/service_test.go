@@ -606,6 +606,18 @@ type UpdateServiceParams struct {
 	forceDeployment        bool
 }
 
+func TestDelayedServiceCreate(t *testing.T) {
+	// define test flag set
+	timeoutFlagValue := 1
+
+	flagSet := flag.NewFlagSet("ecs-cli-up", 0)
+	flagSet.String(flags.ComposeServiceTimeOutFlag, strconv.Itoa(timeoutFlagValue), "")
+	cliContext := cli.NewContext(nil, flagSet, nil)
+
+	// call tests
+	upNewService(t, cliContext, &config.CommandConfig{}, &utils.ECSParams{})
+}
+
 func TestUpdateExistingServiceWithForceFlag(t *testing.T) {
 	// define test flag set
 	forceFlagValue := true
@@ -765,6 +777,92 @@ func getUpdateServiceMockClient(t *testing.T,
 		}).Return(nil),
 	)
 	return mockEcs
+}
+
+func getCreateServiceMockClient(t *testing.T,
+	ctrl *gomock.Controller,
+	taskDefinition ecs.TaskDefinition,
+	taskDefID string,
+	registerTaskDefResponse ecs.TaskDefinition,
+) *mock_ecs.MockECSClient {
+
+	mockEcs := mock_ecs.NewMockECSClient(ctrl)
+
+	createdService := &ecs.Service{
+		TaskDefinition: aws.String("arn/test-task-def"),
+		Status:         aws.String("ACTIVE"),
+		DesiredCount:   aws.Int64(0),
+		RunningCount:   aws.Int64(0),
+		ServiceName:    aws.String("test-created"),
+	}
+	updatedService := *createdService
+	gomock.InOrder(
+		mockEcs.EXPECT().DescribeService(gomock.Any()).Return(getDescribeServiceTestResponse(nil), nil),
+
+		mockEcs.EXPECT().RegisterTaskDefinitionIfNeeded(gomock.Any(), gomock.Any()).Do(func(x, y interface{}) {
+			verifyTaskDefinitionInput(t, taskDefinition, x.(*ecs.RegisterTaskDefinitionInput))
+		}).Return(&registerTaskDefResponse, nil),
+
+		mockEcs.EXPECT().CreateService(
+			gomock.Any(), // serviceName
+			gomock.Any(), // taskDefName
+			gomock.Any(), // loadBalancer
+			gomock.Any(), // role
+			gomock.Any(), // deploymentConfig
+			gomock.Any(), // networkConfig
+			gomock.Any(), // launchType
+			gomock.Any(), // healthCheckGracePeriod
+		).Do(func(a, b, c, d, e, f, g, h interface{}) {
+			observedTaskDefID := b.(string)
+			assert.Equal(t, taskDefID, observedTaskDefID, "Task Definition name should match")
+		}).Return(nil),
+
+		mockEcs.EXPECT().DescribeService(gomock.Any()).Return(getDescribeServiceTestResponse(nil), nil),
+		mockEcs.EXPECT().DescribeService(gomock.Any()).Return(getDescribeServiceTestResponse(createdService), nil).MaxTimes(2),
+		mockEcs.EXPECT().UpdateService(
+			gomock.Any(), // serviceName
+			gomock.Any(), // taskDefinition
+			gomock.Any(), // count
+			gomock.Any(), // deploymentConfig
+			gomock.Any(), // networkConfig
+			gomock.Any(), // healthCheckGracePeriod
+			gomock.Any(), // force
+		).Return(nil),
+		mockEcs.EXPECT().DescribeService(gomock.Any()).Return(getDescribeServiceTestResponse(updatedService.SetDeployments([]*ecs.Deployment{&ecs.Deployment{}}).SetDesiredCount(1).SetRunningCount(1)), nil),
+	)
+	return mockEcs
+}
+
+func upNewService(t *testing.T,
+	cliContext *cli.Context,
+	commandConfig *config.CommandConfig,
+	ecsParams *utils.ECSParams) {
+
+	ctrl := gomock.NewController(t)
+	defer ctrl.Finish()
+
+	taskDefID := "newTaskDefinitionId"
+	taskDefArn, taskDefinition, registerTaskDefResponse := getTestTaskDef(taskDefID)
+
+	mockEcs := getCreateServiceMockClient(t, ctrl, taskDefinition, taskDefID, registerTaskDefResponse)
+
+	ecsContext := &context.ECSContext{
+		ECSClient:     mockEcs,
+		CommandConfig: commandConfig,
+		CLIContext:    cliContext,
+		ECSParams:     ecsParams,
+	}
+	ecsContext.SetProjectName()
+	service := NewService(ecsContext)
+	err := service.LoadContext()
+	assert.NoError(t, err, "Unexpected error while loading context in update service with new task def test")
+
+	service.SetTaskDefinition(&taskDefinition)
+	err = service.Up()
+	assert.NoError(t, err, "Unexpected error on service up with new task def")
+
+	// task definition should be set
+	assert.Equal(t, taskDefArn, aws.StringValue(service.TaskDefinition().TaskDefinitionArn), "TaskDefArn should match")
 }
 
 func upServiceWithCurrentTaskDefTest(t *testing.T,
