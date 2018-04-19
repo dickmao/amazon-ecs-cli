@@ -18,7 +18,6 @@ import (
 	"strconv"
 	"strings"
 
-	log "github.com/sirupsen/logrus"
 	"github.com/aws/amazon-ecs-cli/ecs-cli/modules/cli/compose/context"
 	"github.com/aws/amazon-ecs-cli/ecs-cli/modules/cli/compose/entity"
 	"github.com/aws/amazon-ecs-cli/ecs-cli/modules/cli/compose/entity/types"
@@ -30,6 +29,7 @@ import (
 	"github.com/aws/aws-sdk-go/service/ecs"
 	"github.com/docker/libcompose/project"
 	"github.com/pkg/errors"
+	log "github.com/sirupsen/logrus"
 )
 
 // Service type is placeholder for a single task definition and its cache
@@ -234,9 +234,6 @@ func (s *Service) Up() error {
 			return err
 		}
 		err = waitForServiceDescribable(s)
-		if err == nil {
-			return fmt.Errorf("bad test!")
-		}
 		return s.Start()
 	}
 
