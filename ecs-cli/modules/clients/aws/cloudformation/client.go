@@ -96,6 +96,8 @@ type CloudformationClient interface {
 	DeleteStack(string) error
 	WaitUntilDeleteComplete(string) error
 	UpdateStack(string, *CfnStackParams) (string, error)
+	UpdateStackTemplateBody(string, string, *CfnStackParams) (string, error)
+	UpdateStackTemplateUrl(string, string, *CfnStackParams) (string, error)
 	WaitUntilUpdateComplete(string) error
 	ValidateStackExists(string) error
 	DescribeNetworkResources(string) error
@@ -163,20 +165,41 @@ func (c *cloudformationClient) DeleteStack(stackName string) error {
 }
 
 // UpdateStack creates the cloudformation stack by invoking the sdk's UpdateStack API.
-func (c *cloudformationClient) UpdateStack(stackName string, params *CfnStackParams) (string, error) {
-	output, err := c.client.UpdateStack(&cloudformation.UpdateStackInput{
-		Capabilities:        aws.StringSlice([]string{cloudformation.CapabilityCapabilityIam}),
-		StackName:           aws.String(stackName),
-		Parameters:          params.Get(),
-		UsePreviousTemplate: aws.Bool(true),
-	})
-
+func (c *cloudformationClient) UpdateStackHelper(input *cloudformation.UpdateStackInput) (string, error) {
+	output, err := c.client.UpdateStack(input)
 	if err != nil {
 		return "", err
 	}
 
 	log.WithFields(log.Fields{"stackId": output.StackId}).Debug("Cloudformation update stack call succeeded")
 	return aws.StringValue(output.StackId), nil
+}
+
+func (c *cloudformationClient) UpdateStack(stackName string, params *CfnStackParams) (string, error) {
+	return c.UpdateStackHelper(&cloudformation.UpdateStackInput{
+		Capabilities:        aws.StringSlice([]string{cloudformation.CapabilityCapabilityIam}),
+		StackName:           aws.String(stackName),
+		Parameters:          params.Get(),
+		UsePreviousTemplate: aws.Bool(true),
+	})
+}
+
+func (c *cloudformationClient) UpdateStackTemplateUrl(url string, stackName string, params *CfnStackParams) (string, error) {
+	return c.UpdateStackHelper(&cloudformation.UpdateStackInput{
+		Capabilities: aws.StringSlice([]string{cloudformation.CapabilityCapabilityIam}),
+		StackName:    aws.String(stackName),
+		Parameters:   params.Get(),
+		TemplateURL:  aws.String(url),
+	})
+}
+
+func (c *cloudformationClient) UpdateStackTemplateBody(body string, stackName string, params *CfnStackParams) (string, error) {
+	return c.UpdateStackHelper(&cloudformation.UpdateStackInput{
+		Capabilities: aws.StringSlice([]string{cloudformation.CapabilityCapabilityIam}),
+		StackName:    aws.String(stackName),
+		Parameters:   params.Get(),
+		TemplateBody: aws.String(body),
+	})
 }
 
 // ValidateStackExists validates if a stack exists with the specified name.

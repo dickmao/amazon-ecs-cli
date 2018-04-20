@@ -485,8 +485,21 @@ func updateCluster(context *cli.Context, rdwr config.ReadWriter, ecsClient ecscl
 		return err
 	}
 
+	template := context.String(flags.CustomTemplateFlag)
+	if template != "" {
+		if _, err := url.ParseRequestURI(template); err != nil {
+			bytes, err := ioutil.ReadFile(template)
+			if err != nil {
+				return err
+			}
+			template = string(bytes)
+		}
+	} else {
+		template = cloudformation.GetTemplate()
+	}
+
 	// Update the stack.
-	if _, err := cfnClient.UpdateStack(cliParams.CFNStackName, cfnParams); err != nil {
+	if _, err := cfnClient.UpdateStackTemplateBody(template, cliParams.CFNStackName, cfnParams); err != nil {
 		return err
 	}
 
